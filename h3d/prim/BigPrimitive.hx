@@ -191,19 +191,33 @@ class BigPrimitive extends Primitive {
 		var buf : hl.BytesAccess<hxd.impl.Float32> = hl.Bytes.getArray(buf.getNative());
 		var tmpBuf : hl.BytesAccess<hxd.impl.Float32> = hl.Bytes.getArray(tmpBuf.getNative());
 		#end
+		var p;
+		var x ;
+		var y ;
+		var z ;
+		var tx;
+		var ty;
+		var vx;
+		var vy;
+		var vz;
+		var nx ;
+		var ny ;
+		var nz ;
+		var tnx;
+		var tny;
 		for( i in 0...nvert ) {
-			var p = (i + startVert) * stride;
-			var x = buf[p++];
-			var y = buf[p++];
-			var z = buf[p++];
-			var tx = (x * cr - y * sr) * scale;
-			var ty = (x * sr + y * cr) * scale;
+			p = (i + startVert) * stride;
+			x = buf[p++];
+			y = buf[p++];
+			z = buf[p++];
+			tx = (x * cr - y * sr) * scale;
+			ty = (x * sr + y * cr) * scale;
 
 			inline function add(v) tmpBuf[pos++] = v;
 
-			var vx = dx + tx;
-			var vy = dy + ty;
-			var vz = dz + z * scale;
+			vx = dx + tx;
+			vy = dy + ty;
+			vz = dz + z * scale;
 			add(vx);
 			add(vy);
 			add(vz);
@@ -219,30 +233,30 @@ class BigPrimitive extends Primitive {
 				add(buf[p++] + deltaU);
 				add(buf[p++] + deltaV);
 			case 6:
-				var nx = buf[p++];
-				var ny = buf[p++];
-				var nz = buf[p++];
-				var tnx = nx * cr - ny * sr;
-				var tny = nx * sr + ny * cr;
+				nx = buf[p++];
+				ny = buf[p++];
+				nz = buf[p++];
+				tnx = nx * cr - ny * sr;
+				tny = nx * sr + ny * cr;
 				add(tnx);
 				add(tny);
 				add(nz);
 			case 7:
-				var nx = buf[p++];
-				var ny = buf[p++];
-				var nz = buf[p++];
-				var tnx = nx * cr - ny * sr;
-				var tny = nx * sr + ny * cr;
+				nx = buf[p++];
+				ny = buf[p++];
+				nz = buf[p++];
+				tnx = nx * cr - ny * sr;
+				tny = nx * sr + ny * cr;
 				add(tnx);
 				add(tny);
 				add(nz);
 				add(buf[p++] + deltaU);
 			case 8, 9, 10:
-				var nx = buf[p++];
-				var ny = buf[p++];
-				var nz = buf[p++];
-				var tnx = nx * cr - ny * sr;
-				var tny = nx * sr + ny * cr;
+				nx = buf[p++];
+				ny = buf[p++];
+				nz = buf[p++];
+				tnx = nx * cr - ny * sr;
+				tny = nx * sr + ny * cr;
 				add(tnx);
 				add(tny);
 				add(nz);
@@ -255,11 +269,11 @@ class BigPrimitive extends Primitive {
 					add(buf[p++]);
 
 			default:
-				var nx = buf[p++];
-				var ny = buf[p++];
-				var nz = buf[p++];
-				var tnx = nx * cr - ny * sr;
-				var tny = nx * sr + ny * cr;
+				nx = buf[p++];
+				ny = buf[p++];
+				nz = buf[p++];
+				tnx = nx * cr - ny * sr;
+				tny = nx * sr + ny * cr;
 				add(tnx);
 				add(tny);
 				add(nz);
