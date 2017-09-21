@@ -147,7 +147,19 @@ class Stage {
 			case Blur:
 				wasBlurred = true;
 			default:
-			}
+		}
+		case TouchDown:
+			curMouseX = Std.int(e.mouseX * get_width() / 100);
+			curMouseY = Std.int(e.mouseY * get_height() / 100);
+			eh = new Event(EPush,curMouseX,curMouseY);
+		case TouchUp:
+			curMouseX = Std.int(e.mouseX * get_width() / 100);
+			curMouseY = Std.int(e.mouseY * get_height() / 100);
+			eh = new Event(ERelease,curMouseX,curMouseY);
+		case TouchMove:
+			curMouseX = Std.int(e.mouseX * get_width() / 100);
+			curMouseY = Std.int(e.mouseY * get_height() / 100);
+			eh = new Event(EMove,curMouseX,curMouseY);
 		case MouseDown:
 			curMouseX = e.mouseX;
 			curMouseY = e.mouseY;
