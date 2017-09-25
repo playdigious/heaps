@@ -21,8 +21,8 @@ class Stage {
 	var window : dx.Window;
 	var fullScreenMode : dx.Window.DisplayMode = Borderless;
 	#end
-	var windowWidth = 800;
-	var windowHeight = 600;
+	var windowWidth = hxd.System.width;
+	var windowHeight = hxd.System.height;
 	var curMouseX = 0;
 	var curMouseY = 0;
 

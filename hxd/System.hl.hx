@@ -77,7 +77,7 @@ class System {
 			sdl.Sdl.tick();
 			sdl.Sdl.init();
 			@:privateAccess Stage.initChars();
-			@:privateAccess Stage.inst = new Stage(title, width, height);
+			@:privateAccess Stage.inst = new Stage(title, get_width(), get_height());
 			init();
 			sdl.Sdl.defaultEventHandler = @:privateAccess Stage.inst.onEvent;
 		#elseif hldx
