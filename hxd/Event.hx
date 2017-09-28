@@ -35,14 +35,16 @@ class Event {
 	public var cancel : Bool;
 	public var button : Int = 0;
 	public var touchId : Int;
+	public var fingerId : Int;
 	public var keyCode : Int;
 	public var charCode : Int;
 	public var wheelDelta : Float;
 
-	public function new(k,x=0.,y=0.) {
+	public function new(k,x=0.,y=0., fid = -1) {
 		kind = k;
 		this.relX = x;
 		this.relY = y;
+		this.fingerId = fid;
 	}
 
 	public function toString() {
