@@ -146,10 +146,10 @@ class GlDriver extends Driver {
 		defStencil = new Stencil();
 		#if hlsdl
 		var v : String = gl.getParameter(GL.VERSION);
-		if( v.indexOf("ES") < 0 ){
+		/*if( v.indexOf("ES") < 0 ){
 			commonVA = gl.createVertexArray();
 			gl.bindVertexArray( commonVA );
-		}
+		}*/
 
 
 		var reg = ~/[0-9]+\.[0-9]+/;
@@ -1009,7 +1009,7 @@ class GlDriver extends Driver {
 			if( mrtExt != null )
 				mrtExt.drawBuffersWEBGL([GL.COLOR_ATTACHMENT0]);
 			#elseif hlsdl
-			gl.drawBuffers(1, CBUFFERS);
+			//gl.drawBuffers(1, CBUFFERS);
 			#end
 		}
 	}
@@ -1066,7 +1066,7 @@ class GlDriver extends Driver {
 		if( mrtExt != null )
 			mrtExt.drawBuffersWEBGL([for( i in 0...textures.length ) GL.COLOR_ATTACHMENT0 + i]);
 		#elseif hlsdl
-			gl.drawBuffers(textures.length, CBUFFERS);
+			//gl.drawBuffers(textures.length, CBUFFERS);
 		#end
 	}
 
@@ -1091,8 +1091,10 @@ class GlDriver extends Driver {
 	override function hasFeature( f : Feature ) : Bool {
 		return switch( f ) {
 		#if (hlsdl || psgl)
-		case StandardDerivatives, FloatTextures, MultipleRenderTargets, Queries:
-			true; // runtime extension detect required ?
+		case StandardDerivatives, FloatTextures:
+			true;
+		case MultipleRenderTargets, Queries:
+			false; // runtime extension detect required ?
 		#else
 		case StandardDerivatives:
 			gl.getExtension('OES_standard_derivatives') != null;
