@@ -495,7 +495,7 @@ class GlslOut {
 		buf = new StringBuf();
 		exprValues = [];
 
-		decl("precision mediump float;");
+		decl("precision highp float;");
 
 		if( s.funs.length != 1 ) throw "assert";
 		var f = s.funs[0];
