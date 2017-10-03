@@ -109,7 +109,12 @@ class DirectXDriver extends h3d.impl.Driver {
 		#if debug
 		options |= DebugLayer;
 		#end
-		driver = Driver.create(window, backBufferFormat, options);
+
+		try
+			driver = Driver.create(window, backBufferFormat, options)
+		catch( e : Dynamic )
+			throw "Failed to initialize DirectX driver (" + e+")";
+
 		if( driver == null ) throw "Failed to initialize DirectX driver";
 
 		var version = Driver.getSupportedVersion();
@@ -198,7 +203,10 @@ class DirectXDriver extends h3d.impl.Driver {
 	}
 
 	override function present() {
+		var old = hxd.System.allowTimeout;
+		if( old ) hxd.System.allowTimeout = false;
 		Driver.present(window.vsync ? 1 : 0, None);
+		if( old ) hxd.System.allowTimeout = true;
 	}
 
 	override function getDefaultDepthBuffer():h3d.mat.DepthBuffer {
