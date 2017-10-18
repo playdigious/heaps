@@ -885,7 +885,11 @@ class BaseLibrary {
 							q.initRotate(def.rotate.x, def.rotate.y, def.rotate.z);
 						} else
 							q.identity();
+#if pakfix
+					} else if (crx[rp-1] != null && cry[rp-1] != null && crz[rp-1] != null)
+#else
 					} else
+#end
 						q.initRotate(crx[rp-1], cry[rp-1], crz[rp-1]);
 
 					if( def.preRot != null ) {
