@@ -9,4 +9,7 @@ enum PixelFormat {
 	ALPHA8;
 	ALPHA16F;
 	ALPHA32F;
+#if mobile
+	PVRTC;
+#end
 }

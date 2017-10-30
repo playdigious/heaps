@@ -233,6 +233,9 @@ class Driver {
 	public function uploadTexturePixels( t : h3d.mat.Texture, pixels : hxd.Pixels, mipLevel : Int, side : Int ) {
 	}
 
+	public function uploadTextureCompressed( t : h3d.mat.Texture, bytes : haxe.io.Bytes, mipLevel : Int, side : Int ) {
+	}
+
 	public function readVertexBytes( v : VertexBuffer, startVertex : Int, vertexCount : Int, buf : haxe.io.Bytes, bufPos : Int ) {
 		throw "Driver does not allow to read vertex bytes";
 	}

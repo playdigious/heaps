@@ -860,6 +860,23 @@ class GlDriver extends Driver {
 		gl.bindTexture(bind, null);
 	}
 
+	override function uploadTextureCompressed( t : h3d.mat.Texture, bytes  : haxe.io.Bytes, mipLevel : Int, side : Int ) {
+		var bind = GL.TEXTURE_2D;
+		var face = GL.TEXTURE_2D;
+		var width = t.width;  //2048 / Math.pow(2, mipLevel);
+		var height = t.height; //2048 / Math.pow(2, mipLevel);
+		gl.bindTexture(bind, t.t.t);
+		#if hl
+		gl.compressedTexImage2D(face, mipLevel, t.t.internalFmt, width, height, 0, bytes.length, streamData(bytes.getData(),0,bytes.length));
+		#elseif lime
+		gl.compressedTexImage2D(face, mipLevel, t.t.internalFmt, width, height, 0, bytes.length, bytesToUint8Array(bytes));
+		#else
+		gl.pixelStorei(GL.UNPACK_FLIP_Y_WEBGL, cubic ? 0 : 1);
+		gl.compressedTexImage2D(face, mipLevel, t.t.internalFmt, width, height, 0, bytes.length, bytesToUint8Array(bytes));
+		#end
+		gl.bindTexture(bind, null);
+	}
+
 	override function uploadVertexBuffer( v : VertexBuffer, startVertex : Int, vertexCount : Int, buf : hxd.FloatBuffer, bufPos : Int ) {
 		var stride : Int = v.stride;
 		gl.bindBuffer(GL.ARRAY_BUFFER, v.b);

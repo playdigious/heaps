@@ -201,6 +201,16 @@ class Texture {
 			mem.driver.generateMipMaps(this);
 	}
 
+	public function uploadCompressedData( bytes : haxe.io.Bytes, mipLevel = 0, side = 0) {
+		var width = 2048; //bytes.readInt16();
+		var height = 2048; //bytes.readInt16();
+		alloc();
+		checkSize(width, height, mipLevel);
+		mem.driver.uploadTextureCompressed(this, bytes, mipLevel, side);
+		flags.set(WasCleared);
+		checkMipMapGen(mipLevel, side);
+	}
+
 	public function uploadBitmap( bmp : hxd.BitmapData, mipLevel = 0, side = 0 ) {
 		alloc();
 		checkSize(bmp.width, bmp.height, mipLevel);
@@ -331,6 +341,16 @@ class Texture {
 	}
 
 	*/
+
+	public static function fromData( compressed : haxe.io.Bytes, ?allocPos : h3d.impl.AllocPos) {
+		var width = 2048; //compressed.readInt16();
+		var height = 2048; //compressed.readInt16();
+		var flags = new Array<TextureFlags>();
+		flags.push(NoAlloc);
+		var t = new Texture(width, height, flags, PVRTC, allocPos);
+		t.uploadCompressedData(compressed);
+		return t;
+	}
 
 	public static function fromBitmap( bmp : hxd.BitmapData, ?allocPos : h3d.impl.AllocPos ) {
 		var t = new Texture(bmp.width, bmp.height, allocPos);
