@@ -198,6 +198,10 @@ class Driver {
 		return null;
 	}
 
+	public function allocCompressedTexture( t : h3d.mat.Texture ) : Texture {
+		return null;
+	}
+
 	public function allocIndexes( count : Int ) : IndexBuffer {
 		return null;
 	}

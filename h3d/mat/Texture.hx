@@ -91,8 +91,12 @@ class Texture {
 	}
 
 	public function alloc() {
-		if( t == null )
-			mem.allocTexture(this);
+		if( t == null ) {
+			if (this.flags.has(CompressedTexture))
+				mem.allocCompressedTexture(this);
+			else
+				mem.allocTexture(this);
+		}
 	}
 
 	public function clone( ?allocPos : h3d.impl.AllocPos ) {
@@ -201,14 +205,12 @@ class Texture {
 			mem.driver.generateMipMaps(this);
 	}
 
-	public function uploadCompressedData( bytes : haxe.io.Bytes, mipLevel = 0, side = 0) {
-		var width = 2048; //bytes.readInt16();
-		var height = 2048; //bytes.readInt16();
+	public function uploadCompressedData( bytes : haxe.io.Bytes, width, height, mipLevel = 0, side = 0) {
 		alloc();
 		checkSize(width, height, mipLevel);
 		mem.driver.uploadTextureCompressed(this, bytes, mipLevel, side);
 		flags.set(WasCleared);
-		checkMipMapGen(mipLevel, side);
+		//checkMipMapGen(mipLevel, side);
 	}
 
 	public function uploadBitmap( bmp : hxd.BitmapData, mipLevel = 0, side = 0 ) {
@@ -342,13 +344,26 @@ class Texture {
 
 	*/
 
-	public static function fromData( compressed : haxe.io.Bytes, ?allocPos : h3d.impl.AllocPos) {
-		var width = 2048; //compressed.readInt16();
-		var height = 2048; //compressed.readInt16();
-		var flags = new Array<TextureFlags>();
-		flags.push(NoAlloc);
-		var t = new Texture(width, height, flags, PVRTC, allocPos);
-		t.uploadCompressedData(compressed);
+	public static function fromPVR( compressed : haxe.io.Bytes, ?allocPos : h3d.impl.AllocPos) {
+		// PVRTC 4bpp only
+		var headerSize = compressed.getInt32(0);
+		var height = compressed.getInt32(4);
+		var width = compressed.getInt32(8);
+		var mipMaps = compressed.getInt32(12) + 1; // Sigh...
+		trace("LOAD PVR headerSize=" + headerSize +", width=" + width +", height=" + height + ", mipMaps = " + mipMaps);
+		var textureFlags = new Array<TextureFlags>();
+		textureFlags.push(CompressedTexture);
+		textureFlags.push(MipMapped);
+		var t = new Texture(width, height, textureFlags, PVRTC, allocPos);
+		var offs = headerSize;
+		for (mipLevel in 0...mipMaps)
+		{
+			var texSize = ((width>>mipLevel) * (height>>mipLevel)) >> 1; // 4 bpp only
+			if (texSize < 32) texSize = 32; // PVRTC spec (min 32 bytes per block)
+			var texData = compressed.sub(offs, texSize); 
+			t.uploadCompressedData(texData, width>>mipLevel, height>>mipLevel, mipLevel);
+			offs += texSize;
+		}
 		return t;
 	}
 

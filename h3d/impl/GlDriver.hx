@@ -665,6 +665,44 @@ class GlDriver extends Driver {
 		return tt;
 	}
 
+	override function allocCompressedTexture( t : h3d.mat.Texture ) : Texture {
+		var tt = gl.createTexture();
+		var tt : Texture = { t : tt, width : t.width, height : t.height, internalFmt : GL.COMPRESSED_RGB_PVRTC_4BPPV1_IMG, pixelFmt : GL.RGB, bits : -1 };
+		switch( t.format ) {
+		case PVRTC:
+			// default
+			tt.internalFmt = GL.COMPRESSED_RGB_PVRTC_4BPPV1_IMG;
+		default:
+			throw "Unsupported compressed texture format "+t.format;
+		}
+		t.lastFrame = frame;
+		t.flags.unset(WasCleared);
+		/*var bind = t.flags.has(Cube) ? GL.TEXTURE_CUBE_MAP : GL.TEXTURE_2D;
+		gl.bindTexture(bind, tt.t);
+		var outOfMem = false;
+		if( t.flags.has(Cube) ) {
+			for( i in 0...6 ) {
+				gl.compressedTexImage2D(CUBE_FACES[i], 0, tt.internalFmt, tt.width, tt.height, 0, 0, null);
+				if( gl.getError() == GL.OUT_OF_MEMORY ) {
+					outOfMem = true;
+					break;
+				}
+			}
+		} else {
+			gl.compressedTexImage2D(bind, 0, tt.internalFmt, tt.width, tt.height, 0, 0, null);
+			if( gl.getError() == GL.OUT_OF_MEMORY )
+				outOfMem = true;
+		}
+		gl.bindTexture(bind, null);
+
+		if( outOfMem ) {
+			gl.deleteTexture(tt.t);
+			return null;
+		}*/
+
+		return tt;
+	}
+
 	override function allocDepthBuffer( b : h3d.mat.DepthBuffer ) : DepthBuffer {
 		var r = gl.createRenderbuffer();
 		gl.bindRenderbuffer(GL.RENDERBUFFER, r);
@@ -863,8 +901,8 @@ class GlDriver extends Driver {
 	override function uploadTextureCompressed( t : h3d.mat.Texture, bytes  : haxe.io.Bytes, mipLevel : Int, side : Int ) {
 		var bind = GL.TEXTURE_2D;
 		var face = GL.TEXTURE_2D;
-		var width = t.width;  //2048 / Math.pow(2, mipLevel);
-		var height = t.height; //2048 / Math.pow(2, mipLevel);
+		var width = t.width;  
+		var height = t.height; 
 		gl.bindTexture(bind, t.t.t);
 		#if hl
 		gl.compressedTexImage2D(face, mipLevel, t.t.internalFmt, width, height, 0, bytes.length, streamData(bytes.getData(),0,bytes.length));
