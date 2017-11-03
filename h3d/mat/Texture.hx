@@ -210,7 +210,6 @@ class Texture {
 		checkSize(width, height, mipLevel);
 		mem.driver.uploadTextureCompressed(this, bytes, mipLevel, side);
 		flags.set(WasCleared);
-		//checkMipMapGen(mipLevel, side);
 	}
 
 	public function uploadBitmap( bmp : hxd.BitmapData, mipLevel = 0, side = 0 ) {
@@ -350,10 +349,10 @@ class Texture {
 		var height = compressed.getInt32(4);
 		var width = compressed.getInt32(8);
 		var mipMaps = compressed.getInt32(12) + 1; // Sigh...
-		trace("LOAD PVR headerSize=" + headerSize +", width=" + width +", height=" + height + ", mipMaps = " + mipMaps);
+		//trace("LOAD PVR headerSize=" + headerSize +", width=" + width +", height=" + height + ", mipMaps = " + mipMaps);
 		var textureFlags = new Array<TextureFlags>();
 		textureFlags.push(CompressedTexture);
-		textureFlags.push(MipMapped);
+		if (mipMaps > 1) textureFlags.push(MipMapped);
 		var t = new Texture(width, height, textureFlags, PVRTC, allocPos);
 		var offs = headerSize;
 		for (mipLevel in 0...mipMaps)
