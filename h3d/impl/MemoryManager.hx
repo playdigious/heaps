@@ -261,6 +261,19 @@ class MemoryManager {
 		texMemory += t.width * t.height * bpp(t);
 	}
 
+	@:allow(h3d.mat.Texture.alloc)
+	function allocCompressedTexture( t : h3d.mat.Texture ) {
+		var free = cleanTextures(false);
+		t.t = driver.allocCompressedTexture(t);
+		if( t.t == null ) {
+			if( !cleanTextures(true) ) throw "Maximum texture memory reached";
+			allocCompressedTexture(t);
+			return;
+		}
+		textures.push(t);
+		texMemory += (t.width * t.height) >> 1; // PVRTC 4bpp only
+	}
+
 	// ------------------------------------- DISPOSE ------------------------------------------
 
 	public function onContextLost() {

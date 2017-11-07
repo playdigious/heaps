@@ -198,6 +198,10 @@ class Driver {
 		return null;
 	}
 
+	public function allocCompressedTexture( t : h3d.mat.Texture ) : Texture {
+		return null;
+	}
+
 	public function allocIndexes( count : Int ) : IndexBuffer {
 		return null;
 	}
@@ -231,6 +235,9 @@ class Driver {
 	}
 
 	public function uploadTexturePixels( t : h3d.mat.Texture, pixels : hxd.Pixels, mipLevel : Int, side : Int ) {
+	}
+
+	public function uploadTextureCompressed( t : h3d.mat.Texture, bytes : haxe.io.Bytes, mipLevel : Int, side : Int ) {
 	}
 
 	public function readVertexBytes( v : VertexBuffer, startVertex : Int, vertexCount : Int, buf : haxe.io.Bytes, bufPos : Int ) {

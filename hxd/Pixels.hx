@@ -368,6 +368,7 @@ class Pixels {
 		case RGBA32F: 16;
 		case ALPHA16F: 2;
 		case ALPHA32F: 4;
+		case PVRTC: 1;
 		}
 	}
 
@@ -389,6 +390,8 @@ class Pixels {
 			channel.toInt() * 2;
 		case RGBA32F:
 			channel.toInt() * 4;
+		case PVRTC:
+			0;
 		}
 	}
 

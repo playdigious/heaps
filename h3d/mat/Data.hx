@@ -97,6 +97,10 @@ enum TextureFlags {
 	**/
 	NoAlloc;
 	/**
+		Use specific compressed texture code path
+	**/
+	CompressedTexture;
+	/**
 		Inform that we will often perform upload operations on this texture
 	**/
 	Dynamic;
