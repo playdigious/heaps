@@ -526,8 +526,8 @@ class Driver {
 			AL.sourceQueueBuffers(s.inst, buffers.length, tmpBytes);
 			for( b in buffers )
 				s.buffers.push(b);
-			if( AL.getError() != 0 )
-				throw "Failed to queue buffers : format differs";
+			//if( AL.getError() != 0 )
+			//	throw "Failed to queue buffers : format differs";
 
 		} else {
 			var buffer = getBuffer(c.sound, c.soundGroup);
