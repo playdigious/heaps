@@ -271,7 +271,7 @@ class MemoryManager {
 			return;
 		}
 		textures.push(t);
-		texMemory += (t.width * t.height) >> 1; // PVRTC 4bpp only
+		texMemory += (t.width * t.height) >> 1; // Assume 4bpp compressed textures format
 	}
 
 	// ------------------------------------- DISPOSE ------------------------------------------

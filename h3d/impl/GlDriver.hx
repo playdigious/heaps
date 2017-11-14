@@ -667,11 +667,14 @@ class GlDriver extends Driver {
 
 	override function allocCompressedTexture( t : h3d.mat.Texture ) : Texture {
 		var tt = gl.createTexture();
-		var tt : Texture = { t : tt, width : t.width, height : t.height, internalFmt : GL.COMPRESSED_RGB_PVRTC_4BPPV1_IMG, pixelFmt : GL.RGB, bits : -1 };
+		var tt : Texture = { t : tt, width : t.width, height : t.height, internalFmt : GL.COMPRESSED_RGB8_ETC2, pixelFmt : GL.RGB, bits : -1 };
 		switch( t.format ) {
-		case PVRTC:
-			// default
+		case GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG:
 			tt.internalFmt = GL.COMPRESSED_RGB_PVRTC_4BPPV1_IMG;
+		case GL_COMPRESSED_RGB8_ETC2:
+			tt.internalFmt = GL.COMPRESSED_RGB8_ETC2;
+		case GL_COMPRESSED_RGBA_ASTC_6x6:
+			tt.internalFmt = GL.COMPRESSED_RGBA_ASTC_6x6;
 		default:
 			throw "Unsupported compressed texture format "+t.format;
 		}
@@ -903,6 +906,8 @@ class GlDriver extends Driver {
 		var face = GL.TEXTURE_2D;
 		var width = t.width >> mipLevel;
 		var height = t.height >> mipLevel;
+		if (width==0) width = 1;
+		if (height==0) height = 1;
 		gl.bindTexture(bind, t.t.t);
 		#if hl
 		gl.compressedTexImage2D(face, mipLevel, t.t.internalFmt, width, height, 0, bytes.length, streamData(bytes.getData(),0,bytes.length));

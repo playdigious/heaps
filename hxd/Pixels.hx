@@ -368,7 +368,11 @@ class Pixels {
 		case RGBA32F: 16;
 		case ALPHA16F: 2;
 		case ALPHA32F: 4;
-		case PVRTC: 1;
+#if mobile
+		case GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG: 1; // Should be 0.5
+		case GL_COMPRESSED_RGB8_ETC2: 1; // Should be 0.5
+		case GL_COMPRESSED_RGBA_ASTC_6x6: 1; // Should be average (3.56 bits per pixel)
+#end
 		}
 	}
 
@@ -390,8 +394,15 @@ class Pixels {
 			channel.toInt() * 2;
 		case RGBA32F:
 			channel.toInt() * 4;
-		case PVRTC:
+#if mobile
+		// Not making any sense for compressed formats
+		case GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG: 
 			0;
+		case GL_COMPRESSED_RGB8_ETC2:
+			0;
+		case GL_COMPRESSED_RGBA_ASTC_6x6:
+			0;
+#end
 		}
 	}
 
