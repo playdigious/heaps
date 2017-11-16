@@ -371,6 +371,7 @@ class Pixels {
 #if mobile
 		case GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG: 1; // Should be 0.5
 		case GL_COMPRESSED_RGB8_ETC2: 1; // Should be 0.5
+		case GL_COMPRESSED_RGBA_ASTC_5x5: 1; // Should be average (5.12 bits per pixel)
 		case GL_COMPRESSED_RGBA_ASTC_6x6: 1; // Should be average (3.56 bits per pixel)
 #end
 		}
@@ -399,6 +400,8 @@ class Pixels {
 		case GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG: 
 			0;
 		case GL_COMPRESSED_RGB8_ETC2:
+			0;
+		case GL_COMPRESSED_RGBA_ASTC_5x5:
 			0;
 		case GL_COMPRESSED_RGBA_ASTC_6x6:
 			0;

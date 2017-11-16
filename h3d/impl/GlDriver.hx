@@ -673,6 +673,8 @@ class GlDriver extends Driver {
 			tt.internalFmt = GL.COMPRESSED_RGB_PVRTC_4BPPV1_IMG;
 		case GL_COMPRESSED_RGB8_ETC2:
 			tt.internalFmt = GL.COMPRESSED_RGB8_ETC2;
+		case GL_COMPRESSED_RGBA_ASTC_5x5:
+			tt.internalFmt = GL.COMPRESSED_RGBA_ASTC_5x5;
 		case GL_COMPRESSED_RGBA_ASTC_6x6:
 			tt.internalFmt = GL.COMPRESSED_RGBA_ASTC_6x6;
 		default:
