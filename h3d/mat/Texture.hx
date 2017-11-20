@@ -548,6 +548,7 @@ class Texture {
 		switch (ktx.glInternalFormat) {
 			case 0x8C00: format = GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG;
 			case 0x9274: format = GL_COMPRESSED_RGB8_ETC2;
+			case 0x93b2: format = GL_COMPRESSED_RGBA_ASTC_5x5;
 			case 0x93b4: format = GL_COMPRESSED_RGBA_ASTC_6x6;
 			default: throw "[KTX] Unsupported glInternalFormat 0x" + StringTools.hex(ktx.glInternalFormat);
 		}

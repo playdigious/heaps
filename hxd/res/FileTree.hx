@@ -84,12 +84,25 @@ class FileTree {
 		return { tree : embedRec(fs,""), types : embedTypes };
 	}
 
+	function sortDirectory( fileList : Array<String> ) {
+		fileList.sort( function(a:String, b:String):Int
+		{
+		    a = a.toLowerCase();
+		    b = b.toLowerCase();
+		    if (a < b) return -1;
+		    if (a > b) return 1;
+		    return 0;
+		} );
+	}
+
 	function embedRec( fs : hxd.fs.LocalFileSystem, relPath : String ) {
 		var dir = this.path + relPath;
 		var data = { };
 		// make sure to rescan if one of the directories content has changed (file added or deleted)
 		Context.registerModuleDependency(currentModule, dir);
-		for( f in sys.FileSystem.readDirectory(dir) ) {
+		var allFiles = sys.FileSystem.readDirectory(dir);
+		sortDirectory( allFiles);
+		for( f in allFiles ) {
 			var path = dir + "/" + f;
 			if( sys.FileSystem.isDirectory(path) ) {
 				if( f.charCodeAt(0) == ".".code || f.charCodeAt(0) == "_".code )
@@ -227,6 +240,7 @@ class FileTree {
 		// make sure to rescan if one of the directories content has changed (file added or deleted)
 		Context.registerModuleDependency(currentModule, dir);
 		var allFiles = sys.FileSystem.readDirectory(dir);
+		sortDirectory(allFiles);
 		for( f in allFiles ) {
 			var path = dir + "/" + f;
 			var fileName = f;
