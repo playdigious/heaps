@@ -150,7 +150,7 @@ class GlDriver extends Driver {
 		curAttribs = 0;
 		curMatBits = -1;
 		defStencil = new Stencil();
-		#if hlsdl
+		#if (hlsdl || usegl)
 		var v : String = gl.getParameter(GL.VERSION);
 		/*if( v.indexOf("ES") < 0 ){
 			commonVA = gl.createVertexArray();
@@ -250,10 +250,11 @@ class GlDriver extends Driver {
 				glout.version = shaderVersion;
 			else
 				glout.glES = true;
+
 			p.vertex = compileShader(glout,shader.vertex);
 			p.fragment = compileShader(glout,shader.fragment);
 			p.p = gl.createProgram();
-			#if hlsdl
+			#if (hlsdl || usegl)
 			if( !glout.glES ) {
 				var outCount = 0;
 				for( v in shader.fragment.data.vars )
@@ -1074,8 +1075,8 @@ class GlDriver extends Driver {
 			#if js
 			if( mrtExt != null )
 				mrtExt.drawBuffersWEBGL([GL.COLOR_ATTACHMENT0]);
-			#elseif hlsdl
-			//gl.drawBuffers(1, CBUFFERS);
+			#elseif (hlsdl || usegl)
+			//gl.drawBuffers(1, CBUFFERS); // WARNING HERE GLES 3
 			#end
 		}
 	}
@@ -1131,8 +1132,8 @@ class GlDriver extends Driver {
 		#if js
 		if( mrtExt != null )
 			mrtExt.drawBuffersWEBGL([for( i in 0...textures.length ) GL.COLOR_ATTACHMENT0 + i]);
-		#elseif hlsdl
-			//gl.drawBuffers(textures.length, CBUFFERS);
+		#elseif (hlsdl || usegl)
+			//gl.drawBuffers(textures.length, CBUFFERS); // WARNING HERE GLES3
 		#end
 	}
 
@@ -1304,7 +1305,7 @@ class GlDriver extends Driver {
 		GL.TEXTURE_CUBE_MAP_NEGATIVE_Z,
 	];
 
-	#if hlsdl
+	#if (hlsdl || usegl)
 	static var CBUFFERS = hl.Bytes.getArray([for( i in 0...32 ) GL.COLOR_ATTACHMENT0 + i]);
 	#end
 
