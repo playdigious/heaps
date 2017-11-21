@@ -225,7 +225,18 @@ class MemoryManager {
 		return 4;
 	}
 
-	public function cleanTextures( force = true ) {
+	// Dispose everything possible
+	public function wipeTextures() {
+		for( t in textures ) {
+			if( t.realloc == null ) continue;
+			t.dispose();
+		}
+		#if hl
+		hl.Gc.major();
+		#end
+	}
+
+	public function cleanTextures( force = true) {
 		textures.sort(sortByLRU);
 		for( t in textures ) {
 			if( t.realloc == null ) continue;

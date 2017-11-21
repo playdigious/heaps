@@ -237,7 +237,7 @@ class Driver {
 	public function uploadTexturePixels( t : h3d.mat.Texture, pixels : hxd.Pixels, mipLevel : Int, side : Int ) {
 	}
 
-	public function uploadTextureCompressed( t : h3d.mat.Texture, bytes : haxe.io.Bytes, mipLevel : Int, side : Int ) {
+	public function uploadTextureCompressed( t : h3d.mat.Texture, bytes : haxe.io.Bytes, width : Int, height : Int, mipLevel : Int, side : Int ) {
 	}
 
 	public function readVertexBytes( v : VertexBuffer, startVertex : Int, vertexCount : Int, buf : haxe.io.Bytes, bufPos : Int ) {

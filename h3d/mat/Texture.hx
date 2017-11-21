@@ -94,7 +94,13 @@ class Texture {
 	**/
 	public var depthBuffer : DepthBuffer;
 
-	public function new(w, h, ?flags : Array<TextureFlags>, ?format : TextureFormat, ?allocPos : h3d.impl.AllocPos ) {
+
+	/**
+		Loading path for debug
+	**/
+	public var resPath : String;
+
+	public function new(w, h, ?flags : Array<TextureFlags>, ?format : TextureFormat, ?allocPos : h3d.impl.AllocPos, ?resPath : String ) {
 		#if !noEngine
 		var engine = h3d.Engine.getCurrent();
 		this.mem = engine.mem;
@@ -103,6 +109,7 @@ class Texture {
 		this.id = ++UID;
 		this.format = format;
 		this.flags = new haxe.EnumFlags();
+		this.resPath = resPath;
 		if( flags != null )
 			for( f in flags )
 				this.flags.set(f);
@@ -250,7 +257,7 @@ class Texture {
 	public function uploadCompressedData( bytes : haxe.io.Bytes, width, height, mipLevel = 0, side = 0) {
 		alloc();
 		checkSize(width, height, mipLevel);
-		mem.driver.uploadTextureCompressed(this, bytes, mipLevel, side);
+		mem.driver.uploadTextureCompressed(this, bytes, width, height, mipLevel, side);
 		flags.set(WasCleared);
 	}
 
@@ -386,31 +393,138 @@ class Texture {
 	*/
 
 #if mobile
-	public static function fromPVR( compressed : haxe.io.Bytes, ?allocPos : h3d.impl.AllocPos) {
-		// PVRTC 4bpp only
-		var headerSize = compressed.getInt32(0);
-		var height = compressed.getInt32(4);
-		var width = compressed.getInt32(8);
-		var mipMaps = compressed.getInt32(12) + 1; // Does not count "first" mipmap into binary format
-		//trace("LOAD PVR headerSize=" + headerSize +", width=" + width +", height=" + height + ", mipMaps = " + mipMaps);
-		var textureFlags = new Array<TextureFlags>();
-		textureFlags.push(CompressedTexture);
-		if (mipMaps > 1) textureFlags.push(MipMapped);
-		var t = new Texture(width, height, textureFlags, GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG, allocPos);
-		var offs = headerSize;
-		for (mipLevel in 0...mipMaps)
-		{
-			var texSize = ((width>>mipLevel) * (height>>mipLevel)) >> 1; // 4 bpp only
-			if (texSize < 32) texSize = 32; // PVRTC spec (min 32 bytes per block)
-			var texData = compressed.sub(offs, texSize); 
-			t.uploadCompressedData(texData, width>>mipLevel, height>>mipLevel, mipLevel);
-			offs += texSize;
+	public function loadRes(resPath : String)
+	{
+		var bytes = null;
+		try {
+			bytes = hxd.Res.load(resPath).entry.getBytes();
+		} catch ( e: hxd.res.NotFound) { trace("loadRes failed resPath="+ resPath); }
+	    	var GL_TEXTURE_1D:Int      = 0x0DE0;
+	    	var GL_TEXTURE_2D:Int      = 0x0DE1;
+	    	var GL_TEXTURE_3D:Int      = 0x806F;
+		var GL_TEXTURE_CUBE_MAP:Int = 0x8513;
+		var fin:BytesInput = new BytesInput(bytes);
+
+	        var id = UInt8Array.fromBytes(bytes, 0, 12);
+	        if (id[0] != 0xAB && id[1] != 0x4B && id[2] != 0x54 && id[3] != 0x58 &&
+	            id[4] != 0x20 && id[5] != 0x31 && id[6] != 0x31 && id[7] != 0xBB &&
+	            id[8] != 0x0D && id[9] != 0x0A && id[10] != 0x1A && id[11] != 0x0A)
+	            return null;
+	        fin.position = 12;
+
+	        // check endianess of data
+		var bigEndian = false;
+	        var e = fin.readInt32();
+	        if (e == 0x04030201)
+        	    bigEndian = false;
+	        else 
+	            bigEndian = true;
+
+		var ktx:KTXData = {
+        	    glType:                 fin.readInt32(),
+	            glTypeSize:             fin.readInt32(),
+	            glFormat:               fin.readInt32(),
+	            glInternalFormat:       fin.readInt32(),
+	            glBaseInternalFormat:   fin.readInt32(),
+	            pixelWidth:             fin.readInt32(),
+	            pixelHeight:            fin.readInt32(),
+	            pixelDepth:             fin.readInt32(),
+	            numberOfArrayElements:  fin.readInt32(),
+	            numberOfFaces:          fin.readInt32(),
+	            numberOfMipmapLevels:   fin.readInt32(),
+	            bytesOfKeyValueData:    fin.readInt32(),
+	            mips: [],
+            
+	            compressed: false,
+	            generateMips: false,
+	            glTarget: GL_TEXTURE_1D,
+	            dimensions: 1
+	        };
+
+	        fin.position += ktx.bytesOfKeyValueData;
+
+	        // run some validation
+	        if (ktx.glTypeSize != 1 && ktx.glTypeSize != 2 && ktx.glTypeSize != 4)
+        	    throw "[KTX] Unsupported glTypeSize \""+ktx.glTypeSize+"\".";
+        
+	        if (ktx.glType == 0 || ktx.glFormat == 0) {
+	            if (ktx.glType + ktx.glFormat != 0)
+        	        throw "[KTX] glType and glFormat must be zero. Broken compression?";
+	            ktx.compressed = true;
+	        }
+
+	        if ((ktx.pixelWidth == 0) || (ktx.pixelDepth > 0 && ktx.pixelHeight == 0))
+	            throw "[KTX] texture must have width or height if it has depth.";
+
+	        if (ktx.pixelHeight > 0) {
+	            ktx.dimensions = 2;
+	            ktx.glTarget = GL_TEXTURE_2D;
+	        }
+	        if (ktx.pixelDepth > 0) {
+	            ktx.dimensions = 3;
+	            ktx.glTarget = GL_TEXTURE_3D;
+	        }
+	        if (ktx.numberOfFaces == 6) {
+	            if (ktx.dimensions == 2)
+	                ktx.glTarget = GL_TEXTURE_CUBE_MAP;
+	            else
+	                throw "[KTX] cubemap needs 2D faces.";
+	        }
+	        else if (ktx.numberOfFaces != 1)
+        	    throw "[KTX] numberOfFaces must be either 1 or 6";
+
+	        if (ktx.numberOfMipmapLevels == 0) {
+	            ktx.generateMips = true;
+	            ktx.numberOfMipmapLevels = 1;
+	        }
+
+	        // make sane defaults
+	        var pxDepth = ktx.pixelDepth > 0 ? ktx.pixelDepth : 1;
+	        var pxHeight = ktx.pixelHeight > 0 ? ktx.pixelHeight : 1;
+	        var pxWidth = ktx.pixelWidth > 0 ? ktx.pixelWidth : 1;
+        
+	        for (i in 0...ktx.numberOfMipmapLevels) {
+	            var ml:KTXMipLevel = {
+        	        imageSize: fin.readInt32(),
+	                faces: [],
+	                width: Std.int(Math.max(1, ktx.pixelWidth >> i)),
+	                height: Std.int(Math.max(1, ktx.pixelHeight >> i)),
+	                depth: Std.int(Math.max(1, ktx.pixelDepth >> i))
+	            }
+            
+	            var imageSizeRounded = (ml.imageSize + 3)&~3;
+
+	            for (k in 0...ktx.numberOfFaces) {
+        	        var data = Bytes.alloc(imageSizeRounded);
+                	fin.readFullBytes(data, 0, imageSizeRounded);
+	                ml.faces.push(data.getData());
+
+	                if (ktx.numberOfArrayElements > 0) {
+        	            if (ktx.dimensions == 2) ml.height = ktx.numberOfArrayElements;
+                	    if (ktx.dimensions == 3) ml.depth = ktx.numberOfArrayElements;
+	                }
+	            }
+
+	            ktx.mips.push(ml);
+	        }
+
+		var format = GL_COMPRESSED_RGB8_ETC2;
+		switch (ktx.glInternalFormat) {
+			case 0x8C00: format = GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG;
+			case 0x9274: format = GL_COMPRESSED_RGB8_ETC2;
+			case 0x93b2: format = GL_COMPRESSED_RGBA_ASTC_5x5;
+			case 0x93b4: format = GL_COMPRESSED_RGBA_ASTC_6x6;
+			default: throw "[KTX] Unsupported glInternalFormat 0x" + StringTools.hex(ktx.glInternalFormat);
 		}
-		return t;
+		for (mipLevel in 0...ktx.numberOfMipmapLevels)
+		{
+			uploadCompressedData(haxe.io.Bytes.ofData(ktx.mips[mipLevel].faces[0]), ktx.mips[mipLevel].width, ktx.mips[mipLevel].height, mipLevel);
+		}
+		return null;
 	}
 
 	// KTX loading code, loosely based on https://github.com/snowkit/ktx-format
-	public static function fromKTX( _bytes : haxe.io.Bytes, ?allocPos : h3d.impl.AllocPos) {
+	public static function fromKTX( _bytes : haxe.io.Bytes, ?allocPos : h3d.impl.AllocPos, ?resPath : String) {
 	    	var GL_TEXTURE_1D:Int      = 0x0DE0;
 	    	var GL_TEXTURE_2D:Int      = 0x0DE1;
 	    	var GL_TEXTURE_3D:Int      = 0x806F;
@@ -540,7 +654,6 @@ class Texture {
 	            ktx.mips.push(ml);
 	        }
 
-		//trace("LOAD KTX width=" + ktx.pixelWidth + ", height=" + ktx.pixelHeight + ", mipMaps = " + ktx.numberOfMipmapLevels);
 		var textureFlags = new Array<TextureFlags>();
 		textureFlags.push(CompressedTexture);
 		if (ktx.numberOfMipmapLevels > 1) textureFlags.push(MipMapped);
@@ -552,12 +665,12 @@ class Texture {
 			case 0x93b4: format = GL_COMPRESSED_RGBA_ASTC_6x6;
 			default: throw "[KTX] Unsupported glInternalFormat 0x" + StringTools.hex(ktx.glInternalFormat);
 		}
-		var t = new Texture(ktx.pixelWidth, ktx.pixelHeight, textureFlags, format, allocPos);
+		var t = new Texture(ktx.pixelWidth, ktx.pixelHeight, textureFlags, format, allocPos, resPath);
 		for (mipLevel in 0...ktx.numberOfMipmapLevels)
 		{
-			//trace("MipLevel " + mipLevel + ", W=" + ktx.mips[mipLevel].width +", H=" + ktx.mips[mipLevel].height);
 			t.uploadCompressedData(haxe.io.Bytes.ofData(ktx.mips[mipLevel].faces[0]), ktx.mips[mipLevel].width, ktx.mips[mipLevel].height, mipLevel);
 		}
+	        t.realloc = function() { t.loadRes(resPath); }
 		return t;
 	}
 #end
