@@ -150,12 +150,12 @@ class GlDriver extends Driver {
 		curAttribs = 0;
 		curMatBits = -1;
 		defStencil = new Stencil();
-		#if hlsdl
+		#if (hlsdl || usegl)
 		var v : String = gl.getParameter(GL.VERSION);
-		/*if( v.indexOf("ES") < 0 ){
+		if( v.indexOf("ES") < 0 ){
 			commonVA = gl.createVertexArray();
 			gl.bindVertexArray( commonVA );
-		}*/
+		}
 
 
 		var reg = ~/[0-9]+\.[0-9]+/;
@@ -250,10 +250,11 @@ class GlDriver extends Driver {
 				glout.version = shaderVersion;
 			else
 				glout.glES = true;
+
 			p.vertex = compileShader(glout,shader.vertex);
 			p.fragment = compileShader(glout,shader.fragment);
 			p.p = gl.createProgram();
-			#if hlsdl
+			#if (hlsdl || usegl)
 			if( !glout.glES ) {
 				var outCount = 0;
 				for( v in shader.fragment.data.vars )
@@ -671,49 +672,6 @@ class GlDriver extends Driver {
 		return tt;
 	}
 
-	override function allocCompressedTexture( t : h3d.mat.Texture ) : Texture {
-		var tt = gl.createTexture();
-		var tt : Texture = { t : tt, width : t.width, height : t.height, internalFmt : GL.COMPRESSED_RGB8_ETC2, pixelFmt : GL.RGB, bits : -1 };
-		switch( t.format ) {
-		case GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG:
-			tt.internalFmt = GL.COMPRESSED_RGB_PVRTC_4BPPV1_IMG;
-		case GL_COMPRESSED_RGB8_ETC2:
-			tt.internalFmt = GL.COMPRESSED_RGB8_ETC2;
-		case GL_COMPRESSED_RGBA_ASTC_5x5:
-			tt.internalFmt = GL.COMPRESSED_RGBA_ASTC_5x5;
-		case GL_COMPRESSED_RGBA_ASTC_6x6:
-			tt.internalFmt = GL.COMPRESSED_RGBA_ASTC_6x6;
-		default:
-			throw "Unsupported compressed texture format "+t.format;
-		}
-		t.lastFrame = frame;
-		t.flags.unset(WasCleared);
-		/*var bind = t.flags.has(Cube) ? GL.TEXTURE_CUBE_MAP : GL.TEXTURE_2D;
-		gl.bindTexture(bind, tt.t);
-		var outOfMem = false;
-		if( t.flags.has(Cube) ) {
-			for( i in 0...6 ) {
-				gl.compressedTexImage2D(CUBE_FACES[i], 0, tt.internalFmt, tt.width, tt.height, 0, 0, null);
-				if( gl.getError() == GL.OUT_OF_MEMORY ) {
-					outOfMem = true;
-					break;
-				}
-			}
-		} else {
-			gl.compressedTexImage2D(bind, 0, tt.internalFmt, tt.width, tt.height, 0, 0, null);
-			if( gl.getError() == GL.OUT_OF_MEMORY )
-				outOfMem = true;
-		}
-		gl.bindTexture(bind, null);
-
-		if( outOfMem ) {
-			gl.deleteTexture(tt.t);
-			return null;
-		}*/
-
-		return tt;
-	}
-
 	override function allocDepthBuffer( b : h3d.mat.DepthBuffer ) : DepthBuffer {
 		var r = gl.createRenderbuffer();
 		gl.bindRenderbuffer(GL.RENDERBUFFER, r);
@@ -909,25 +867,6 @@ class GlDriver extends Driver {
 		gl.bindTexture(bind, null);
 	}
 
-	override function uploadTextureCompressed( t : h3d.mat.Texture, bytes  : haxe.io.Bytes, mipLevel : Int, side : Int ) {
-		var bind = GL.TEXTURE_2D;
-		var face = GL.TEXTURE_2D;
-		var width = t.width >> mipLevel;
-		var height = t.height >> mipLevel;
-		if (width==0) width = 1;
-		if (height==0) height = 1;
-		gl.bindTexture(bind, t.t.t);
-		#if hl
-		gl.compressedTexImage2D(face, mipLevel, t.t.internalFmt, width, height, 0, bytes.length, streamData(bytes.getData(),0,bytes.length));
-		#elseif lime
-		gl.compressedTexImage2D(face, mipLevel, t.t.internalFmt, width, height, 0, bytes.length, bytesToUint8Array(bytes));
-		#else
-		gl.pixelStorei(GL.UNPACK_FLIP_Y_WEBGL, cubic ? 0 : 1);
-		gl.compressedTexImage2D(face, mipLevel, t.t.internalFmt, width, height, 0, bytes.length, bytesToUint8Array(bytes));
-		#end
-		gl.bindTexture(bind, null);
-	}
-
 	override function uploadVertexBuffer( v : VertexBuffer, startVertex : Int, vertexCount : Int, buf : hxd.FloatBuffer, bufPos : Int ) {
 		var stride : Int = v.stride;
 		gl.bindBuffer(GL.ARRAY_BUFFER, v.b);
@@ -1076,8 +1015,8 @@ class GlDriver extends Driver {
 			#if js
 			if( mrtExt != null )
 				mrtExt.drawBuffersWEBGL([GL.COLOR_ATTACHMENT0]);
-			#elseif hlsdl
-			//gl.drawBuffers(1, CBUFFERS);
+			#elseif (hlsdl || usegl)
+			gl.drawBuffers(1, CBUFFERS);
 			#end
 		}
 	}
@@ -1133,8 +1072,8 @@ class GlDriver extends Driver {
 		#if js
 		if( mrtExt != null )
 			mrtExt.drawBuffersWEBGL([for( i in 0...textures.length ) GL.COLOR_ATTACHMENT0 + i]);
-		#elseif hlsdl
-			//gl.drawBuffers(textures.length, CBUFFERS);
+		#elseif (hlsdl || usegl)
+			gl.drawBuffers(textures.length, CBUFFERS);
 		#end
 	}
 
@@ -1158,11 +1097,9 @@ class GlDriver extends Driver {
 
 	override function hasFeature( f : Feature ) : Bool {
 		return switch( f ) {
-		#if (hlsdl || psgl)
-		case StandardDerivatives, FloatTextures:
-			true;
-		case MultipleRenderTargets, Queries:
-			false; // runtime extension detect required ?
+		#if hl
+		case StandardDerivatives, FloatTextures, MultipleRenderTargets, Queries:
+			true; // runtime extension detect required ?
 		#else
 		case StandardDerivatives:
 			gl.getExtension('OES_standard_derivatives') != null;
@@ -1306,7 +1243,7 @@ class GlDriver extends Driver {
 		GL.TEXTURE_CUBE_MAP_NEGATIVE_Z,
 	];
 
-	#if hlsdl
+	#if (hlsdl || usegl)
 	static var CBUFFERS = hl.Bytes.getArray([for( i in 0...32 ) GL.COLOR_ATTACHMENT0 + i]);
 	#end
 
