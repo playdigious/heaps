@@ -257,7 +257,7 @@ class Texture {
 	public function uploadCompressedData( bytes : haxe.io.Bytes, width, height, mipLevel = 0, side = 0) {
 		alloc();
 		checkSize(width, height, mipLevel);
-		mem.driver.uploadTextureCompressed(this, bytes, mipLevel, side);
+		mem.driver.uploadTextureCompressed(this, bytes, width, height, mipLevel, side);
 		flags.set(WasCleared);
 	}
 
@@ -279,7 +279,6 @@ class Texture {
 
 	public function dispose() {
 		if( t != null ) {
-			trace("dispose texture name="+resPath+" w="+this.width+",h="+this.height+",f="+this.format);
 			mem.deleteTexture(this);
 			#if debug
 			this.allocPos.customParams = ["#DISPOSED"];
@@ -396,7 +395,6 @@ class Texture {
 #if mobile
 	public function loadRes(resPath : String)
 	{
-		trace("Texture loadRes " + resPath);
 		var bytes = null;
 		try {
 			bytes = hxd.Res.load(resPath).entry.getBytes();
@@ -510,7 +508,6 @@ class Texture {
 	            ktx.mips.push(ml);
 	        }
 
-		//trace("LOAD KTX width=" + ktx.pixelWidth + ", height=" + ktx.pixelHeight + ", mipMaps = " + ktx.numberOfMipmapLevels);
 		var format = GL_COMPRESSED_RGB8_ETC2;
 		switch (ktx.glInternalFormat) {
 			case 0x8C00: format = GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG;
@@ -521,7 +518,6 @@ class Texture {
 		}
 		for (mipLevel in 0...ktx.numberOfMipmapLevels)
 		{
-			//trace("MipLevel " + mipLevel + ", W=" + ktx.mips[mipLevel].width +", H=" + ktx.mips[mipLevel].height);
 			uploadCompressedData(haxe.io.Bytes.ofData(ktx.mips[mipLevel].faces[0]), ktx.mips[mipLevel].width, ktx.mips[mipLevel].height, mipLevel);
 		}
 		return null;
@@ -658,7 +654,6 @@ class Texture {
 	            ktx.mips.push(ml);
 	        }
 
-		//trace("LOAD KTX width=" + ktx.pixelWidth + ", height=" + ktx.pixelHeight + ", mipMaps = " + ktx.numberOfMipmapLevels);
 		var textureFlags = new Array<TextureFlags>();
 		textureFlags.push(CompressedTexture);
 		if (ktx.numberOfMipmapLevels > 1) textureFlags.push(MipMapped);
@@ -673,10 +668,9 @@ class Texture {
 		var t = new Texture(ktx.pixelWidth, ktx.pixelHeight, textureFlags, format, allocPos, resPath);
 		for (mipLevel in 0...ktx.numberOfMipmapLevels)
 		{
-			//trace("MipLevel " + mipLevel + ", W=" + ktx.mips[mipLevel].width +", H=" + ktx.mips[mipLevel].height);
 			t.uploadCompressedData(haxe.io.Bytes.ofData(ktx.mips[mipLevel].faces[0]), ktx.mips[mipLevel].width, ktx.mips[mipLevel].height, mipLevel);
 		}
-        t.realloc = function() { t.loadRes(resPath); }
+	        t.realloc = function() { t.loadRes(resPath); }
 		return t;
 	}
 #end

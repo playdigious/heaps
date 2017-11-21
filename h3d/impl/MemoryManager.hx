@@ -225,20 +225,27 @@ class MemoryManager {
 		return 4;
 	}
 
-	public function cleanTextures( force = true, all = false ) {
+	// Dispose everything possible
+	public function wipeTextures() {
+		for( t in textures ) {
+			if( t.realloc == null ) continue;
+			t.dispose();
+		}
+		#if hl
+		hl.Gc.major();
+		#end
+	}
+
+	public function cleanTextures( force = true) {
 		textures.sort(sortByLRU);
-		var dispose = false;
 		for( t in textures ) {
 			if( t.realloc == null ) continue;
 			if( force || t.lastFrame < h3d.Engine.getCurrent().frameCount - 3600 ) {
-				if (t.resPath!=null) trace("Disposing texture " + t.resPath);
 				t.dispose();
-				dispose = true;
-				if (all==true) continue;
 				return true;
 			}
 		}
-		return dispose;
+		return false;
 	}
 
 	function sortByLRU( t1 : h3d.mat.Texture, t2 : h3d.mat.Texture ) {
@@ -247,7 +254,6 @@ class MemoryManager {
 
 	@:allow(h3d.mat.Texture.dispose)
 	function deleteTexture( t : h3d.mat.Texture ) {
-		if (t.resPath != null) trace("Delete texture " + t.resPath);
 		textures.remove(t);
 		driver.disposeTexture(t);
 		texMemory -= t.width * t.height * bpp(t);
@@ -275,7 +281,6 @@ class MemoryManager {
 			allocCompressedTexture(t);
 			return;
 		}
-		if (t.resPath!=null) trace("Push texture " + t.resPath);
 		textures.push(t);
 		texMemory += (t.width * t.height) >> 1; // Assume 4bpp compressed textures format
 	}

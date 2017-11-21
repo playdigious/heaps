@@ -909,11 +909,9 @@ class GlDriver extends Driver {
 		gl.bindTexture(bind, null);
 	}
 
-	override function uploadTextureCompressed( t : h3d.mat.Texture, bytes  : haxe.io.Bytes, mipLevel : Int, side : Int ) {
+	override function uploadTextureCompressed( t : h3d.mat.Texture, bytes  : haxe.io.Bytes, width : Int, height : Int, mipLevel : Int, side : Int ) {
 		var bind = GL.TEXTURE_2D;
 		var face = GL.TEXTURE_2D;
-		var width = t.width >> mipLevel;
-		var height = t.height >> mipLevel;
 		if (width==0) width = 1;
 		if (height==0) height = 1;
 		gl.bindTexture(bind, t.t.t);
