@@ -508,9 +508,10 @@ class Texture {
 	            ktx.mips.push(ml);
 	        }
 
-		var format = GL_COMPRESSED_RGB8_ETC2;
+		var format = GL_COMPRESSED_RGB8_ETC1;
 		switch (ktx.glInternalFormat) {
 			case 0x8C00: format = GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG;
+			case 0x8D64: format = GL_COMPRESSED_RGB8_ETC1;
 			case 0x9274: format = GL_COMPRESSED_RGB8_ETC2;
 			case 0x93b2: format = GL_COMPRESSED_RGBA_ASTC_5x5;
 			case 0x93b4: format = GL_COMPRESSED_RGBA_ASTC_6x6;

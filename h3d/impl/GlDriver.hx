@@ -674,10 +674,12 @@ class GlDriver extends Driver {
 
 	override function allocCompressedTexture( t : h3d.mat.Texture ) : Texture {
 		var tt = gl.createTexture();
-		var tt : Texture = { t : tt, width : t.width, height : t.height, internalFmt : GL.COMPRESSED_RGB8_ETC2, pixelFmt : GL.RGB, bits : -1 };
+		var tt : Texture = { t : tt, width : t.width, height : t.height, internalFmt : GL.COMPRESSED_RGB8_ETC1, pixelFmt : GL.RGB, bits : -1 };
 		switch( t.format ) {
 		case GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG:
 			tt.internalFmt = GL.COMPRESSED_RGB_PVRTC_4BPPV1_IMG;
+		case GL_COMPRESSED_RGB8_ETC1:
+			tt.internalFmt = GL.COMPRESSED_RGB8_ETC1;
 		case GL_COMPRESSED_RGB8_ETC2:
 			tt.internalFmt = GL.COMPRESSED_RGB8_ETC2;
 		case GL_COMPRESSED_RGBA_ASTC_5x5:
@@ -1133,7 +1135,7 @@ class GlDriver extends Driver {
 		if( mrtExt != null )
 			mrtExt.drawBuffersWEBGL([for( i in 0...textures.length ) GL.COLOR_ATTACHMENT0 + i]);
 		#elseif (hlsdl || usegl)
-			//gl.drawBuffers(textures.length, CBUFFERS); // WARNING HERE GLES3
+			//gl.drawBuffers(textures.length, CBUFFERS); // WARNING HERE GLES 3
 		#end
 	}
 
