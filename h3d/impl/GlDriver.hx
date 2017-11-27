@@ -126,6 +126,7 @@ class GlDriver extends Driver {
 	var defStencil : Stencil;
 	var programs : Map<Int, CompiledProgram>;
 	var frame : Int;
+	var lastActiveIndex : Int = 0;
 
 	var bufferWidth : Int;
 	var bufferHeight : Int;
@@ -370,9 +371,14 @@ class GlDriver extends Driver {
 			var tcount = s.textures.length;
 			for( i in 0...s.textures.length + s.cubeTextures.length ) {
 				var t = buf.tex[i];
+				var isCube = i >= tcount;
 				if( t == null || t.isDisposed() ) {
-					var color = h3d.mat.Defaults.loadingTextureColor;
-					t = h3d.mat.Texture.fromColor(color,(color>>>24)/255);
+					if( isCube ) {
+						t = h3d.mat.Texture.defaultCubeTexture();
+					} else {
+						var color = h3d.mat.Defaults.loadingTextureColor;
+						t = h3d.mat.Texture.fromColor(color, (color >>> 24) / 255);
+					}
 				}
 				if( t != null && t.t == null && t.realloc != null ) {
 					t.alloc();
@@ -380,7 +386,6 @@ class GlDriver extends Driver {
 				}
 				t.lastFrame = frame;
 
-				var isCube = i >= tcount;
 				var pt = isCube ? s.cubeTextures[i - tcount] : s.textures[i];
 				if( pt == null ) continue;
 				if( boundTextures[i] == t.t ) continue;
@@ -390,6 +395,7 @@ class GlDriver extends Driver {
 				gl.activeTexture(GL.TEXTURE0 + i);
 				gl.uniform1i(pt, i);
 				gl.bindTexture(mode, t.t.t);
+				lastActiveIndex = i;
 
 				var mip = Type.enumIndex(t.mipMap);
 				var filter = Type.enumIndex(t.filter);
@@ -613,9 +619,18 @@ class GlDriver extends Driver {
 		}
 	}
 
+	function restoreBind() {
+		var t = boundTextures[lastActiveIndex];
+		if( t == null )
+			gl.bindTexture(GL.TEXTURE_2D, null);
+		else
+			gl.bindTexture(t.bind, t.t);
+	}
+
 	override function allocTexture( t : h3d.mat.Texture ) : Texture {
 		var tt = gl.createTexture();
-		var tt : Texture = { t : tt, width : t.width, height : t.height, internalFmt : GL.RGBA, pixelFmt : GL.UNSIGNED_BYTE, bits : -1 };
+		var bind = t.flags.has(Cube) ? GL.TEXTURE_CUBE_MAP : GL.TEXTURE_2D;
+		var tt : Texture = { t : tt, width : t.width, height : t.height, internalFmt : GL.RGBA, pixelFmt : GL.UNSIGNED_BYTE, bits : -1, bind : bind };
 		switch( t.format ) {
 		case RGBA:
 			// default
@@ -646,7 +661,6 @@ class GlDriver extends Driver {
 		}
 		t.lastFrame = frame;
 		t.flags.unset(WasCleared);
-		var bind = t.flags.has(Cube) ? GL.TEXTURE_CUBE_MAP : GL.TEXTURE_2D;
 		gl.bindTexture(bind, tt.t);
 		var outOfMem = false;
 		if( t.flags.has(Cube) ) {
@@ -662,7 +676,7 @@ class GlDriver extends Driver {
 			if( gl.getError() == GL.OUT_OF_MEMORY )
 				outOfMem = true;
 		}
-		gl.bindTexture(bind, null);
+		restoreBind();
 
 		if( outOfMem ) {
 			gl.deleteTexture(tt.t);
@@ -674,7 +688,8 @@ class GlDriver extends Driver {
 
 	override function allocCompressedTexture( t : h3d.mat.Texture ) : Texture {
 		var tt = gl.createTexture();
-		var tt : Texture = { t : tt, width : t.width, height : t.height, internalFmt : GL.COMPRESSED_RGB8_ETC1, pixelFmt : GL.RGB, bits : -1 };
+                var bind = t.flags.has(Cube) ? GL.TEXTURE_CUBE_MAP : GL.TEXTURE_2D;
+		var tt : Texture = { t : tt, width : t.width, height : t.height, internalFmt : GL.COMPRESSED_RGB8_ETC1, pixelFmt : GL.RGB, bits : -1, bind : bind };
 		switch( t.format ) {
 		case GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG:
 			tt.internalFmt = GL.COMPRESSED_RGB_PVRTC_4BPPV1_IMG;
@@ -707,7 +722,7 @@ class GlDriver extends Driver {
 			if( gl.getError() == GL.OUT_OF_MEMORY )
 				outOfMem = true;
 		}
-		gl.bindTexture(bind, null);
+		restoreBind();
 
 		if( outOfMem ) {
 			gl.deleteTexture(tt.t);
@@ -787,6 +802,9 @@ class GlDriver extends Driver {
 		var tt = t.t;
 		if( tt == null ) return;
 		t.t = null;
+		for( i in 0...boundTextures.length )
+			if( boundTextures[i] == tt )
+				boundTextures[i] = null;
 		gl.deleteTexture(tt.t);
 	}
 
@@ -802,7 +820,7 @@ class GlDriver extends Driver {
 		var bind = t.flags.has(Cube) ? GL.TEXTURE_CUBE_MAP : GL.TEXTURE_2D;
 		gl.bindTexture(bind, t.t.t);
 		gl.generateMipmap(bind);
-		gl.bindTexture(bind, null);
+		restoreBind();
 	}
 
 	override function uploadTextureBitmap( t : h3d.mat.Texture, bmp : hxd.BitmapData, mipLevel : Int, side : Int ) {
@@ -822,7 +840,7 @@ class GlDriver extends Driver {
 			gl.pixelStorei(GL.UNPACK_FLIP_Y_WEBGL, 1);
 			#end
 			gl.texImage2D(GL.TEXTURE_2D, mipLevel, t.t.internalFmt, getChannels(t.t), t.t.pixelFmt, img.getImageData(0, 0, bmp.width, bmp.height));
-			gl.bindTexture(GL.TEXTURE_2D, null);
+			restoreBind();
 		}
 	#end
 	}
@@ -909,7 +927,7 @@ class GlDriver extends Driver {
 		gl.pixelStorei(GL.UNPACK_FLIP_Y_WEBGL, cubic ? 0 : 1);
 		gl.texImage2D(face, mipLevel, t.t.internalFmt, pixels.width, pixels.height, 0, getChannels(t.t), t.t.pixelFmt, bytesToUint8Array(pixels.bytes));
 		#end
-		gl.bindTexture(bind, null);
+		restoreBind();
 	}
 
 	override function uploadTextureCompressed( t : h3d.mat.Texture, bytes  : haxe.io.Bytes, width : Int, height : Int, mipLevel : Int, side : Int ) {
@@ -926,7 +944,7 @@ class GlDriver extends Driver {
 		gl.pixelStorei(GL.UNPACK_FLIP_Y_WEBGL, cubic ? 0 : 1);
 		gl.compressedTexImage2D(face, mipLevel, t.t.internalFmt, width, height, 0, bytes.length, bytesToUint8Array(bytes));
 		#end
-		gl.bindTexture(bind, null);
+		restoreBind();
 	}
 
 	override function uploadVertexBuffer( v : VertexBuffer, startVertex : Int, vertexCount : Int, buf : hxd.FloatBuffer, bufPos : Int ) {
@@ -1101,7 +1119,7 @@ class GlDriver extends Driver {
 			var bind = tex.flags.has(Cube) ? GL.TEXTURE_CUBE_MAP : GL.TEXTURE_2D;
 			gl.bindTexture(bind, tex.t.t);
 			gl.generateMipmap(bind);
-			gl.bindTexture(bind, null);
+			restoreBind();
 		}
 
 		tex.flags.set(WasCleared); // once we draw to, do not clear again
