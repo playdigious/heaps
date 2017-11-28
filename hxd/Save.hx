@@ -77,6 +77,9 @@ class Save {
 		return true;
 		#elseif sys
 		var data = saveData(val,checkSum);
+		#if mobile
+		hxd.CloudSave.sendSave(name, data);
+		#end
 		var file = savePath(name);
 		try if( sys.io.File.getContent(file) == data ) return false catch( e : Dynamic ) {};
 		sys.io.File.saveContent(file, data);
@@ -85,5 +88,12 @@ class Save {
 		return false;
 		#end
 	}
+
+#if mobile
+	public static function loadedFromCloud<T>( data : String, checkSum = false ) : T
+	{
+		return loadData(data, checkSum);
+	}
+#end
 
 }
