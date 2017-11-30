@@ -6,14 +6,25 @@ import sdl.Cursor;
 import dx.Cursor;
 #end
 
-enum Platform {
+@:enum abstract Platform(Int) {
+	var IOS		= 0;
+	var TV_OS	= 1;
+	var Android	= 2;
+	var WebGL	= 3;
+	var PC		= 4;
+	var Console	= 5;
+	var FlashPlayer	= 6;
+}
+
+/*enum Platform {
 	IOS;
+	TV_OS;
 	Android;
 	WebGL;
 	PC;
 	Console;
 	FlashPlayer;
-}
+}*/
 
 enum SystemValue {
 	IsTouch;
@@ -199,7 +210,7 @@ class System {
 	#elseif hlsdl
 	static function get_width() : Int return sdl.Sdl.getScreenWidth();
 	static function get_height() : Int return sdl.Sdl.getScreenHeight();
-	static function get_platform() : Platform return PC; // TODO : Xbox ?
+	static function get_platform() : Platform return sdl.Sdl.getPlatform(); // TODO : Xbox ?
 	#else
 	static function get_width() : Int return 800;
 	static function get_height() : Int return 600;
