@@ -239,6 +239,19 @@ class Pad {
 	}
 	#end
 
+	#if mobile
+	public static function controllerCount() : Int
+	{
+		var count:Int = 0;
+
+		for(p in pads)
+			if(p != null && p.d != null)
+				count++;
+
+		return count;
+	}
+	#end
+
 	#if hlsdl
 
 	inline function _setAxis( axisId : Int, value : Int ){
