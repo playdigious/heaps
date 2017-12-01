@@ -17,6 +17,7 @@ enum EventKind {
 		Used to check if we are still on the interactive if no EMove was triggered this frame.
 	**/
 	ECheck;
+	ECloudSaveLoaded;
 }
 
 class Event {
@@ -39,6 +40,8 @@ class Event {
 	public var keyCode : Int;
 	public var charCode : Int;
 	public var wheelDelta : Float;
+	public var saveName : hl.Bytes;
+	public var saveData : hl.Bytes;
 
 	public function new(k,x=0.,y=0., fid = -1) {
 		kind = k;
@@ -54,6 +57,7 @@ class Event {
 		case EWheel: ",wheelDelta=" + wheelDelta;
 		case EKeyDown, EKeyUp: ",keyCode=" + keyCode;
 		case ETextInput: ",charCode=" + charCode;
+		case ECloudSaveLoaded : ",saveName=" + saveName + "\nwithData=" + saveData;
 		}
 	}
 
