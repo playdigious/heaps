@@ -257,8 +257,12 @@ class Texture {
 	}
 
 	inline function checkSize(width, height, mip) {
-		if ((width != 1 || height != 1) && ( width != this.width >> mip || height != this.height >> mip ))
-			throw "Invalid upload size : " + width + "x" + height + " should be " + (this.width >> mip) + "x" + (this.height >> mip);
+		var thisW = this.width >> mip;
+		thisW = (thisW < 1 ? 1 : thisW);
+		var thisH = this.height >> mip;
+		thisH = (thisH < 1 ? 1 : thisH);
+		if ((width != 1 || height != 1) && ( width != thisW || height != thisH ))
+			throw "Invalid upload size : " + width + "x" + height + " should be " + thisW + "x" + thisH;
 	}
 
 	function checkMipMapGen(mipLevel,side) {
