@@ -40,8 +40,10 @@ class Event {
 	public var keyCode : Int;
 	public var charCode : Int;
 	public var wheelDelta : Float;
+	#if hl
 	public var saveName : hl.Bytes;
 	public var saveData : hl.Bytes;
+	#end
 
 	public function new(k,x=0.,y=0., fid = -1) {
 		kind = k;
@@ -57,7 +59,11 @@ class Event {
 		case EWheel: ",wheelDelta=" + wheelDelta;
 		case EKeyDown, EKeyUp: ",keyCode=" + keyCode;
 		case ETextInput: ",charCode=" + charCode;
+		#if hl
 		case ECloudSaveLoaded : ",saveName=" + saveName + "\nwithData=" + saveData;
+		#else
+		case ECloudSaveLoaded: "";
+		#end
 		}
 	}
 
