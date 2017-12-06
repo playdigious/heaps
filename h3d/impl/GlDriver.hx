@@ -1096,7 +1096,7 @@ class GlDriver extends Driver {
 			if( mrtExt != null )
 				mrtExt.drawBuffersWEBGL([GL.COLOR_ATTACHMENT0]);
 			#elseif (hlsdl || usegl)
-			//gl.drawBuffers(1, CBUFFERS); // WARNING HERE GLES 3
+			gl.drawBuffers(1, CBUFFERS);
 			#end
 		}
 	}
@@ -1179,7 +1179,7 @@ class GlDriver extends Driver {
 		return switch( f ) {
 		#if (hlsdl || psgl)
 		case StandardDerivatives, FloatTextures:
-			true;
+			false;
 		case MultipleRenderTargets, Queries:
 			false; // runtime extension detect required ?
 		#else
