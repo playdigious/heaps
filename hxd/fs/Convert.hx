@@ -75,7 +75,7 @@ class ConvertWAV2OGG extends Convert {
 	}
 
 	override function convert() {
-		command("oggenc2", ["--resample", "44100", "-Q", srcPath, "-o", dstPath]);
+		command("oggenc", ["--resample", "44100", "-Q", srcPath, "-o", dstPath]);
 	}
 
 }

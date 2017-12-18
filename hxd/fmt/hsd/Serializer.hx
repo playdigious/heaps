@@ -1,20 +1,11 @@
-package h3d.impl;
+package hxd.fmt.hsd;
 
-#if !(hxbit && !macro)
-private interface EmptyInterface {}
-#end
-
-typedef Serializable = #if (hxbit && !macro) hxbit.Serializable #else EmptyInterface #end;
-typedef StructSerializable = #if (hxbit && !macro) hxbit.StructSerializable #else EmptyInterface #end;
-
-#if (hxbit && !macro)
-class SceneSerializer extends hxbit.Serializer {
-
-	public var materialRef = new Map<String,h3d.mat.Material>();
+class Serializer extends hxbit.Serializer {
 
 	var version = 0;
 
-	var resPath : String = MacroHelper.getResourcesPath();
+	public var resPath : String = h3d.impl.MacroHelper.getResourcesPath();
+	public var modelCache = new h3d.prim.ModelCache();
 	var shaderVarIndex : Int;
 	var shaderUID = 0;
 	var shaderIndexes = new Map<hxsl.Shader,Int>();
@@ -128,7 +119,7 @@ class SceneSerializer extends hxbit.Serializer {
 	}
 
 	public function loadHMD( path : String ) {
-		return hxd.res.Loader.currentInstance.load(path).toHmd();
+		return modelCache.loadLibrary(hxd.res.Loader.currentInstance.load(path).toModel());
 	}
 
 	public function addShader( s : hxsl.Shader ) {
@@ -215,7 +206,7 @@ class SceneSerializer extends hxbit.Serializer {
 			addFloat(v.y);
 			if( n >= 3 ) addFloat(v.z);
 			if( n >= 4 ) addFloat(v.w);
-		case TSampler2D:
+		case TSampler2D, TSamplerCube:
 			if( !addTexture(val) )
 				throw "Cannot serialize unnamed texture " + s+"."+v.name+" = "+val;
 		default:
@@ -246,7 +237,7 @@ class SceneSerializer extends hxbit.Serializer {
 			if( n >= 3 ) v.z = getFloat();
 			if( n >= 4 ) v.w = getFloat();
 			return v;
-		case TSampler2D:
+		case TSampler2D, TSamplerCube:
 			return getTexture();
 		default:
 			throw "Cannot unserialize macro var " + v.name+":"+hxsl.Ast.Tools.toString(v.type);
@@ -255,6 +246,10 @@ class SceneSerializer extends hxbit.Serializer {
 
 	function initHSDPaths( resPath : String, projectPath : String ) {
 		this.resPath = resPath;
+	}
+
+	public function loadAnimation( resPath : String ) {
+		return loadHMD(resPath).loadAnimation();
 	}
 
 	public function loadHSD( bytes ) {
@@ -330,4 +325,3 @@ class SceneSerializer extends hxbit.Serializer {
 	}
 
 }
-#end

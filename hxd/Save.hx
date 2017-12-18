@@ -70,6 +70,8 @@ class Save {
 		throw "TODO";
 		#elseif sys
 		try sys.FileSystem.deleteFile(savePath(name)) catch( e : Dynamic ) {}
+		#elseif js
+		try js.Browser.window.localStorage.removeItem(name) catch( e : Dynamic ) {}
 		#end
 	}
 
@@ -95,6 +97,11 @@ class Save {
 		var file = savePath(name);
 		try if( sys.io.File.getContent(file) == data ) return false catch( e : Dynamic ) {};
 		sys.io.File.saveContent(file, data);
+		return true;
+		#elseif js
+		var data = saveData(val, checkSum);
+		try if( js.Browser.window.localStorage.getItem(name) == data ) return false catch( e : Dynamic ) {};
+		js.Browser.window.localStorage.setItem(name, data);
 		return true;
 		#else
 		return false;

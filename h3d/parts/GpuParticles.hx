@@ -841,6 +841,10 @@ class GpuParticles extends h3d.scene.MultiMaterial {
 			if( !allocated )
 				return; // was removed
 		}
+
+		if( !ctx.visibleFlag && !alwaysSync )
+			return;
+
 		if( primitive != null )
 			for( g in groups )
 				if( g.needRebuild ) {
@@ -853,7 +857,7 @@ class GpuParticles extends h3d.scene.MultiMaterial {
 		var camera = ctx.camera;
 		if( camera == null )
 			camera = new h3d.Camera();
-		if( primitive == null || primitive.buffer.isDisposed() )
+		if( primitive == null || primitive.buffer == null || primitive.buffer.isDisposed() )
 			rebuildAll(camera);
 
 		uploadedCount = 0;
@@ -879,7 +883,7 @@ class GpuParticles extends h3d.scene.MultiMaterial {
 				q.saveToMatrix(g.pshader.cameraRotation);
 			}
 			if( g.emitMode == CameraBounds ) {
-				g.pshader.transform.loadFrom(camera.getInverseView());
+				g.pshader.transform.load(camera.getInverseView());
 				g.pshader.offset.set( -camera.pos.x * g.emitDist, -camera.pos.y * g.emitDist, -camera.pos.z * g.emitDist );
 				g.pshader.offset.transform3x3( camera.mcam );
 				g.pshader.offset.x %= volumeBounds.xSize;

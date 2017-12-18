@@ -35,6 +35,7 @@ class GlslOut {
 	var isVertex : Bool;
 	var allNames : Map<String, Int>;
 	var outIndexes : Map<Int, Int>;
+	var intelDriverFix : Bool;
 	public var varNames : Map<Int,String>;
 	public var flipY : Bool;
 	public var glES : Bool;
@@ -112,8 +113,8 @@ class GlslOut {
 			switch( size ) {
 			case SVar(v):
 				ident(v);
-			case SConst(1):
-				add(2); // intel HD driver fix
+			case SConst(1) if( intelDriverFix ):
+				add(2);
 			case SConst(v):
 				add(v);
 			}
@@ -133,7 +134,7 @@ class GlslOut {
 			add("[");
 			switch( size ) {
 			case SVar(v): ident(v);
-			case SConst(1): add(2); // intel HD driver fix
+			case SConst(1) if( intelDriverFix ): add(2);
 			case SConst(n): add(n);
 			}
 			add("]");
