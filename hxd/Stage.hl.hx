@@ -235,6 +235,15 @@ class Stage {
 				((c & 0x1F) << 12) | (((e.keyCode >> 8) & 0x7F) << 6) | ((e.keyCode >> 16) & 0x7F);
 			else
 				((c & 0x0F) << 18) | (((e.keyCode >> 8) & 0x7F) << 12) | (((e.keyCode >> 16) & 0x7F) << 6) | ((e.keyCode >> 24) & 0x7F);
+		// //APP Event
+		case AppTerminating:
+		case LowMemory:	
+		case WillEnterBackground:
+			System.appInBackground = true;
+		case DidEnterBackground:
+		case WillEnterForeground:
+			System.appInBackground = false;
+		case DidEnterForeground:
 		#elseif hldx
 		case KeyDown:
 			eh = new Event(EKeyDown);

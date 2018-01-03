@@ -50,6 +50,10 @@ class System {
 	static var sentinel : hl.UI.Sentinel;
 	#end
 
+	#if hlsdl
+	public static var appInBackground = false;
+	#end
+
 	// -- HL
 	static var currentNativeCursor : hxd.Cursor = Default;
 	static var cursorVisible = true;

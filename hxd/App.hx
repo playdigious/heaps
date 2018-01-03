@@ -155,6 +155,9 @@ class App implements h3d.IDrawable {
 	}
 
 	function mainLoop() {
+		#if hlsdl
+		if (System.appInBackground) return;
+		#end
 		hxd.Timer.update();
 		sevents.checkEvents();
 		if( isDisposed ) return;
