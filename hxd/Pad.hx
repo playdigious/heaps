@@ -103,6 +103,10 @@ class Pad {
 	};
 	#end
 
+	#if hl
+	public static var ANALOG_BUTTON_THRESHOLDS = { press: 0.3, release: 0.25 };
+	#end
+
 	public static var DEFAULT_CONFIG =
 		#if hlsdl CONFIG_SDL
 		#elseif flash CONFIG_XBOX
@@ -297,6 +301,15 @@ class Pad {
 		buttons[ btnId ] = down;
 		values[ btnId ] = down ? 1 : 0;
 	}
+
+	function _detectAnalogButton(index: Int, v: Float) {
+		if(v > ANALOG_BUTTON_THRESHOLDS.press && v > values[index]) {
+			buttons[ index ] = true;
+		}
+		if(v < ANALOG_BUTTON_THRESHOLDS.release && v < values[index]) {
+			buttons[ index ] = false;
+		}
+	}
 	#end
 
 	#if mobile
@@ -316,6 +329,8 @@ class Pad {
 
 	inline function _setAxis( axisId : Int, value : Int ){
 		var v = value / 0x7FFF;
+
+		_detectAnalogButton(axisId, v);
 
 		// Invert Y axis
 		if( axisId == 1 || axisId == 3 )
@@ -348,8 +363,15 @@ class Pad {
 		var p = pads.get( e.controller );
 		switch( e.type ){
 			case GControllerAdded:
-				if( initDone )
+				if( initDone ){
+					if( p != null ){
+						pads.remove( p.index );
+						p.d.close();
+						p.connected = false;
+						p.onDisconnect();
+					}
 					initPad(e.controller);
+				}
 			case GControllerRemoved:
 				if( p != null ){
 					pads.remove( p.index );
@@ -391,6 +413,8 @@ class Pad {
 			for( i in 0...GameController.NUM_AXES ){
 				var ii = GameController.NUM_BUTTONS + i;
 				var v = p.d.getAxis(i);
+				p.prevButtons[ii] = p.buttons[ii];
+				p._detectAnalogButton(ii, v);
 				p.values[ii] = v;
 				if( ii == GameController.CONFIG.analogX )
 					p.xAxis = v;
