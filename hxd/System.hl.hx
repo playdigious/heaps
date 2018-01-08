@@ -237,6 +237,16 @@ class System {
 		return 60.;
 	}
 
+	/*
+	If wantedFPS is equal or less than 0, the FPS lock is removed, else it will lock the FPS at wantedFPS
+	*/
+	public static function lockFPS(?wantedFPS:Int)
+	{
+		#if hlsdl
+		sdl.Sdl.lockFPS(wantedFPS);
+		#end
+	}
+
 	public static function getValue( s : SystemValue ) : Bool {
 		return switch( s ) {
 		#if !usesys

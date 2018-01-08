@@ -312,7 +312,6 @@ class Pad {
 	}
 	#end
 
-	#if mobile
 	public static function controllerCount() : Int
 	{
 		var count:Int = 0;
@@ -323,7 +322,37 @@ class Pad {
 
 		return count;
 	}
-	#end
+
+	static var controllerChanged : Array<Void -> Void>;
+	public static function addControllerChangedCallback(callback : Void -> Void)
+	{
+		if(controllerChanged == null)
+		{
+			controllerChanged = new Array();
+		}
+		if(controllerChanged.indexOf(callback) < 0)
+			controllerChanged.push(callback);
+	}
+
+	public static function removeControllerChangedCallback(callback : Void -> Void)
+	{
+		if(controllerChanged == null || controllerChanged.indexOf(callback) < 0)
+		{
+			return;
+		}
+		controllerChanged.remove(callback);
+	}
+
+	public static function onControllerChanged()
+	{
+		for(controlC in controllerChanged)
+		{
+			if(controlC != null)
+			{
+				controlC();
+			}
+		}
+	}
 
 	#if hlsdl
 
@@ -356,6 +385,7 @@ class Pad {
 			p._setAxis( axis, sp.getAxis(axis) );
 		for( button in 0...15 )
 			p._setButton( button + 6, sp.getButton(button) );
+		onControllerChanged();
 		waitPad( p );
 	}
 
@@ -379,6 +409,7 @@ class Pad {
 					p.connected = false;
 					p.onDisconnect();
 				}
+				onControllerChanged();
 			case GControllerDown:
 				if( p != null && e.button > -1 )
 					p._setButton( e.button + 6, true );
