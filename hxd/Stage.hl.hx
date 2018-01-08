@@ -241,9 +241,11 @@ class Stage {
 		case WillEnterBackground:
 			System.appInBackground = true;
 		case DidEnterBackground:
+			System.appInBackground = true;
 		case WillEnterForeground:
 			System.appInBackground = false;
 		case DidEnterForeground:
+			System.appInBackground = false;
 		#elseif hldx
 		case KeyDown:
 			eh = new Event(EKeyDown);
