@@ -220,6 +220,12 @@ class System {
 		}
 		#end
 	}
+	
+	@:hlNative("util","device_powerful") static function is_device_powerful() : Bool { return false; }
+
+	public static function isDevicePowerful() : Bool {
+		return is_device_powerful();
+	}
 
 	public static function getDeviceName() : String {
 		#if usesys
