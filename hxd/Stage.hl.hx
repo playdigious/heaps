@@ -239,12 +239,16 @@ class Stage {
 		case AppTerminating:
 		case LowMemory:	
 		case WillEnterBackground:
+			eh = new Event(EWillEnterBackground);
 			System.appInBackground = true;
 		case DidEnterBackground:
+			eh = new Event(EDidEnterBackground);
 			System.appInBackground = true;
 		case WillEnterForeground:
+			eh = new Event(EWillEnterForeground);
 			System.appInBackground = false;
 		case DidEnterForeground:
+			eh = new Event(EDidEnterForeground);
 			System.appInBackground = false;
 		#elseif hldx
 		case KeyDown:

@@ -18,6 +18,10 @@ enum EventKind {
 	**/
 	ECheck;
 	ECloudSaveLoaded;
+	EWillEnterBackground;
+	EDidEnterBackground;
+	EWillEnterForeground;
+	EDidEnterForeground;
 }
 
 class Event {
@@ -64,6 +68,7 @@ class Event {
 		#else
 		case ECloudSaveLoaded: "";
 		#end
+		default:"";
 		}
 	}
 

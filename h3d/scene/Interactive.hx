@@ -116,7 +116,10 @@ class Interactive extends Object implements hxd.SceneEvents.Interactive {
 		case ETextInput:
 			onTextInput(e);
 		case ECloudSaveLoaded:
-			return;
+		case EWillEnterBackground:
+		case EDidEnterBackground:
+		case EWillEnterForeground:
+		case EDidEnterForeground:
 		}
 	}
 
