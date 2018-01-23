@@ -40,7 +40,7 @@ class Event {
 	public var cancel : Bool;
 	public var button : Int = 0;
 	public var touchId : Int;
-	public var fingerId : Int;
+	public var fingerId : haxe.Int64;
 	public var keyCode : Int;
 	public var charCode : Int;
 	public var wheelDelta : Float;
@@ -49,7 +49,11 @@ class Event {
 	public var saveData : hl.Bytes;
 	#end
 
-	public function new(k,x=0.,y=0., fid = -1) {
+	public function new(k,x=0.,y=0., ?fid : haxe.Int64) {
+		if(fid == null)
+		{
+			fid = haxe.Int64.make(0, -1);
+		}
 		kind = k;
 		this.relX = x;
 		this.relY = y;
