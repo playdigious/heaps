@@ -151,29 +151,50 @@ class System {
 		if( dismissErrors )
 			return;
 
-		var f = new hl.UI.WinLog("Uncaught Exception", 500, 400);
-		f.setTextContent(err+"\n"+stack);
-		var but = new hl.UI.Button(f, "Continue");
-		but.onClick = function() {
-			hl.UI.stopLoop();
-		};
-
-		var but = new hl.UI.Button(f, "Dismiss all");
-		but.onClick = function() {
+		var arr = new Array();
+		arr.push({ text : "Continue", callb : function() { }});
+		arr.push({ text : "Dismiss all", callb : function() {
 			dismissErrors = true;
-			hl.UI.stopLoop();
-		};
-
-		var but = new hl.UI.Button(f, "Exit");
-		but.onClick = function() {
+		}});
+		arr.push({ text : "Exit", callb : function() {
 			Sys.exit(0);
-		};
+		}});
 
-		while( hl.UI.loop(true) != Quit )
-			timeoutTick();
-		f.destroy();
+		showInfoDialog("Uncaught Exception", err+"\n"+stack, arr, 2);
 		#end
 	}
+
+#if !usesys
+
+	/*
+	Show informations with buttons in a native window 
+
+	@param title the title of the window
+	@param message the core message of the window
+	@param button contains all the buttons of the window
+	@param index the minimal button index to discard the information dialog
+	*/
+	public static function showInfoDialog(title : String, message : String, buttons : Array<{ text : String, callb : Void -> Void }>, index : Int)
+	{
+		var infoWindow = new hl.UI.WinLog(title, 500, 400);
+		infoWindow.setTextContent(message);
+
+		for(button in buttons)
+		{
+			var but = new hl.UI.Button(infoWindow, button.text);
+			but.onClick = function() {
+				hl.UI.stopLoop();
+				if(button.callb != null)
+					button.callb();
+			} 
+		}
+
+		while( hl.UI.loop(true) - index < 0 )
+			timeoutTick();
+		infoWindow.destroy();
+	}
+
+#end
 
 	public static function setNativeCursor( c : hxd.Cursor ) : Void {
 		#if (hlsdl || hldx)
