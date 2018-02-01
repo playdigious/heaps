@@ -266,6 +266,9 @@ class Driver {
 							c.position -= c.duration;
 							s.streamPosition -= c.duration;
 							c.onEnd();
+						} else { // If the channel is not looping and has no other sound queued, it means that it is no longer needed
+							releaseChannel(c);
+							c.onEnd();
 						}
 					}
 					c.positionChanged = false;
