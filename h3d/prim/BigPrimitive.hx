@@ -42,7 +42,9 @@ class BigPrimitive extends Primitive {
 	**/
 	public function begin(vcount,icount) {
 		startIndex = Std.int(bufPos / stride);
-		if( startIndex + vcount >= 65535 ) {
+		var VERTICES = 8192;
+		while ( startIndex + vcount >= VERTICES ) {
+			VERTICES *= 2;
 			if( vcount >= 65535 ) throw "Too many vertices in begin()";
 			flush();
 		}
@@ -52,7 +54,7 @@ class BigPrimitive extends Primitive {
 				tmpBuf = new hxd.FloatBuffer();
 			else
 				PREV_BUFFER = null;
-			tmpBuf.grow(65535 * stride);
+			tmpBuf.grow(VERTICES * stride);
 		}
 		if( tmpIdx == null ) {
 			tmpIdx = PREV_INDEX;
