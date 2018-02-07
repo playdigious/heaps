@@ -161,7 +161,7 @@ class System {
 			Sys.exit(0);
 		}});
 
-		showInfoDialog("Uncaught Exception", err+"\n"+stack, arr, 2);
+		showInfoDialog("Uncaught Exception", err, arr, 2);
 		#end
 	}
 	
