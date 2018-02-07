@@ -147,6 +147,7 @@ class System {
 		var stack = haxe.CallStack.toString(haxe.CallStack.exceptionStack());
 		var err = try Std.string(e) catch( _ : Dynamic ) "????";
 		Sys.println(err + stack);
+		@:privateAccess report_crash(err.bytes, stack.bytes);
 		#if !usesys
 		if( dismissErrors )
 			return;
@@ -163,6 +164,8 @@ class System {
 		showInfoDialog("Uncaught Exception", err+"\n"+stack, arr, 2);
 		#end
 	}
+	
+	@:hlNative("util","report_crash") static function report_crash( err : hl.Bytes, callstack : hl.Bytes ) { }
 
 #if !usesys
 
