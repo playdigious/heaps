@@ -26,6 +26,9 @@ class Build {
 	function buildRec( path : String ) {
 		var dir = resPath + (path == "" ? "" : "/" + path);
 		var f = new File();
+		#if !dataOnly
+		hxd.System.timeoutTick();
+		#end
 		f.name = path.split("/").pop();
 		if( sys.FileSystem.isDirectory(dir) ) {
 			Sys.println(path == "" ? "<root>" : path);
@@ -33,7 +36,7 @@ class Build {
 			f.content = [];
 			for( name in sys.FileSystem.readDirectory(dir) ) {
 				var fpath = path == "" ? name : path+"/"+name;
-				if( name.charCodeAt(0) == ".".code || (name.charCodeAt(0) == "_".code /*&& sys.FileSystem.isDirectory(fpath)*/) )
+				if( name.charCodeAt(0) == ".".code || (name.charCodeAt(0) == "_".code && sys.FileSystem.isDirectory(resPath + "/"+fpath)) )
 					continue;
 				var s = buildRec(fpath);
 				if( s != null ) f.content.push(s);
