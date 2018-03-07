@@ -2,6 +2,8 @@ package hxd;
 
 class Key {
 
+	public static inline var ANDROID_BACK = 1270;
+
 	public static inline var BACKSPACE	= 8;
 	public static inline var TAB		= 9;
 	public static inline var ENTER		= 13;
