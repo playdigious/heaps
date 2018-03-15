@@ -68,14 +68,14 @@ class System {
 
 	static function mainLoop() : Bool {
 		// process events
-		#if hldx
+		#if usesys
+		if( !haxe.System.emitEvents(@:privateAccess hxd.Stage.inst.event) )
+			return false;
+		#elseif hldx
 		if( !dx.Loop.processEvents(@:privateAccess hxd.Stage.inst.onEvent) )
 			return false;
 		#elseif hlsdl
 		if( !sdl.Sdl.processEvents(@:privateAccess hxd.Stage.inst.onEvent) )
-			return false;
-		#elseif usesys
-		if( !haxe.System.emitEvents(@:privateAccess hxd.Stage.inst.event) )
 			return false;
 		#end
 
@@ -84,12 +84,8 @@ class System {
 		if( loopFunc != null ) loopFunc();
 
 		// present
-		#if usesys
-		haxe.System.present();
-		#elseif hlsdl
-		@:privateAccess hxd.Stage.inst.window.present();
-		#end
-
+		var cur = h3d.Engine.getCurrent();
+		if( cur != null ) cur.driver.present();
 		return true;
 	}
 

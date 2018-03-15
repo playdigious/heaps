@@ -191,6 +191,7 @@ class DirectXDriver extends h3d.impl.Driver {
 		mapCount = 0;
 		updateResCount = 0;
 		this.frame = frame;
+		setRenderTarget(null);
 	}
 
 	override function isDisposed() {
@@ -206,7 +207,7 @@ class DirectXDriver extends h3d.impl.Driver {
 			for( i in 0...targetsCount )
 				Driver.clearColor(currentTargets[i], color.r, color.g, color.b, color.a);
 		}
-		if( depth != null || stencil != null )
+		if( currentDepth != null && (depth != null || stencil != null) )
 			Driver.clearDepthStencilView(currentDepth.view, depth, stencil);
 	}
 
@@ -217,6 +218,7 @@ class DirectXDriver extends h3d.impl.Driver {
 	}
 
 	override function present() {
+		if( defaultTarget == null ) return;
 		var old = hxd.System.allowTimeout;
 		if( old ) hxd.System.allowTimeout = false;
 		Driver.present(window.vsync ? 1 : 0, None);
@@ -520,21 +522,24 @@ class DirectXDriver extends h3d.impl.Driver {
 
 	function compileShader( shader : hxsl.RuntimeShader.RuntimeShaderData, compileOnly = false ) {
 		var h = new hxsl.HlslOut();
-		var source = h.run(shader.data);
-		var bytes = try dx.Driver.compileShader(source, "", "main", (shader.vertex?"vs_":"ps_")+shaderVersion, OptimizationLevel3) catch( err : String ) {
+		if( shader.code == null ){
+			shader.code = h.run(shader.data);
+			shader.data.funs = null;
+		}
+		var bytes = try dx.Driver.compileShader(shader.code, "", "main", (shader.vertex?"vs_":"ps_")+shaderVersion, OptimizationLevel3) catch( err : String ) {
 			err = ~/^\(([0-9]+),([0-9]+)-([0-9]+)\)/gm.map(err, function(r) {
 				var line = Std.parseInt(r.matched(1));
 				var char = Std.parseInt(r.matched(2));
 				var end = Std.parseInt(r.matched(3));
-				return "\n<< " + source.split("\n")[line - 1].substr(char-1,end - char + 1) +" >>";
+				return "\n<< " + shader.code.split("\n")[line - 1].substr(char-1,end - char + 1) +" >>";
 			});
-			throw "Shader compilation error " + err + "\n\nin\n\n" + source;
+			throw "Shader compilation error " + err + "\n\nin\n\n" + shader.code;
 		}
 		if( compileOnly )
 			return { s : null, bytes : bytes };
 		var s = shader.vertex ? Driver.createVertexShader(bytes) : Driver.createPixelShader(bytes);
 		if( s == null )
-			throw "Failed to create shader\n" + source;
+			throw "Failed to create shader\n" + shader.code;
 
 		var ctx = new ShaderContext(s);
 		ctx.globalsSize = shader.globalsSize;
@@ -546,7 +551,7 @@ class DirectXDriver extends h3d.impl.Driver {
 		ctx.globals = dx.Driver.createBuffer(shader.globalsSize * 16, Dynamic, ConstantBuffer, CpuWrite, None, 0, null);
 		ctx.params = dx.Driver.createBuffer(shader.paramsSize * 16, Dynamic, ConstantBuffer, CpuWrite, None, 0, null);
 		#if debug
-		ctx.debugSource = source;
+		ctx.debugSource = shader.code;
 		#end
 		return { s : ctx, bytes : bytes };
 	}

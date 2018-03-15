@@ -45,8 +45,11 @@ class Graphics extends Mesh {
 		super(bprim, null, parent);
 		tmpPoints = [];
 		lineShader = new h3d.shader.LineShader();
+		lineShader.setPriority(-100);
 		material.mainPass.addShader(lineShader);
-		material.mainPass.addShader(new h3d.shader.VertexColorAlpha());
+		var vcolor = new h3d.shader.VertexColorAlpha();
+		vcolor.setPriority(-100);
+		material.mainPass.addShader(vcolor);
 		material.mainPass.culling = None;
 	}
 
@@ -61,7 +64,7 @@ class Graphics extends Mesh {
 		if( v ) {
 			material.mainPass.removeShader(lineShader);
 		} else {
-			material.mainPass.addShaderAt(lineShader, 0);
+			material.mainPass.addShader(lineShader);
 		}
 		bprim.clear();
 		tmpPoints = [];

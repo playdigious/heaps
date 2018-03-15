@@ -175,6 +175,11 @@ class Cache {
 			shaderDatas.push( { inst : i, p : s.priority, index : index++ } );
 		}
 		shaderDatas.reverse(); // default is reverse order
+		/*
+			Our shader list is supposedly already sorted. However some shaders
+			with high priority might be prepended at later stage (eg: Base2D)
+			So let's sort again just in case.
+		*/
 		haxe.ds.ArraySort.sort(shaderDatas, function(s1, s2) return s2.p - s1.p);
 
 		#if debug
@@ -263,8 +268,8 @@ class Cache {
 		}
 		#end
 
-		r.spec = { instances : @:privateAccess [for( s in shaders ) s.shader.data.name + (s.priority == 0 ? "" : ""+s.priority)+(s.constBits == 0 ? "" : "_"+StringTools.hex(s.constBits))], signature : null };
-		r.spec.signature = haxe.crypto.Md5.encode(r.spec.instances.join(":"));
+		r.spec = { instances : @:privateAccess [for( s in shaders ) new ShaderInstanceDesc(s.shader, s.constBits)], signature : null };
+		r.spec.signature = haxe.crypto.Md5.encode([for( i in r.spec.instances ) i.shader.data.name+"_" + i.bits].join(":"));
 		r.signature = haxe.crypto.Md5.encode(Printer.shaderToString(r.vertex.data) + Printer.shaderToString(r.fragment.data));
 
 		var r2 = byID.get(r.signature);
@@ -379,6 +384,10 @@ class Cache {
 		if( c == null )
 			INST = c = new Cache();
 		return c;
+	}
+
+	public static function set(c) {
+		INST = c;
 	}
 
 	public static function clear() {
