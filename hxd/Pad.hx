@@ -411,16 +411,23 @@ class Pad {
 				}
 				onControllerChanged();
 			case GControllerDown:
+				updateCurrentPad(p);
 				if( p != null && e.button > -1 )
 					p._setButton( e.button + 6, true );
 			case GControllerUp:
+				updateCurrentPad(p);
 				if( p != null && e.button > -1 )
 					p._setButton( e.button + 6, false );
 			case GControllerAxis:
+				updateCurrentPad(p);
 				if( p != null && e.button > -1 && e.button < 6 )
 					p._setAxis( e.button, e.value );
 			default:
 		}
+	}
+
+	static function updateCurrentPad(p:Pad){
+		waitPad(p);
 	}
 	
 	static function syncPads(){
