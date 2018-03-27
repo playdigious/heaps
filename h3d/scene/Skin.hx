@@ -129,7 +129,12 @@ class Skin extends MultiMaterial {
 		return null;
 	}
 
-	override function getCollider() {
+	override function getLocalCollider() {
+		throw "Not implemented";
+		return null;
+	}
+
+	override function getGlobalCollider() {
 		var col = cast(primitive.getCollider(), h3d.col.Collider.OptimizedCollider);
 		cast(primitive, h3d.prim.HMDModel).loadSkin(skinData);
 		return new h3d.col.SkinCollider(this, cast(col.b, h3d.col.PolygonBuffer));
