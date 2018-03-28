@@ -179,8 +179,10 @@ class Driver implements hxd.snd.Driver {
 			#if hlopenal
 			case "pitch"          : new PitchDriver();
 			case "spatialization" : new SpatializationDriver(this);
+			#if !mobile
 			case "lowpass"        : new LowPassDriver(this);
 			case "reverb"         : new ReverbDriver(this);
+			#end
 			#end
 			default               : new hxd.snd.Driver.EffectDriver<Dynamic>();
 		}

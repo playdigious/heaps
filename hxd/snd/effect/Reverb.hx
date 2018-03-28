@@ -1,7 +1,7 @@
 package hxd.snd.effect;
 
 // I3DL reverb
-
+#if !mobile
 class Reverb extends hxd.snd.Effect {
 	public var wetDryMix         : Float; // [0.0, 100.0] %
 	public var room              : Float; // [-10000 0] mb
@@ -37,3 +37,4 @@ class Reverb extends hxd.snd.Effect {
 		hfReference      = preset.hfReference;
 	}
 }
+#end

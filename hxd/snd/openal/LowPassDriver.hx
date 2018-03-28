@@ -1,5 +1,6 @@
 package hxd.snd.openal;
 
+#if !mobile
 import hxd.snd.openal.AudioTypes;
 import hxd.snd.effect.LowPass;
 
@@ -38,3 +39,4 @@ class LowPassDriver extends hxd.snd.Driver.EffectDriver<LowPass> {
 		AL.sourcei(source.inst, EFX.DIRECT_FILTER, EFX.FILTER_NULL);
 	}
 }
+#end

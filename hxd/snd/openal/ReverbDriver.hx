@@ -2,7 +2,7 @@ package hxd.snd.openal;
 
 import hxd.snd.openal.AudioTypes;
 import hxd.snd.effect.*;
-
+#if !mobile
 @:access(hxd.snd.effect.LowPass)
 @:access(hxd.snd.openal.LowPassDriver)
 class ReverbDriver extends hxd.snd.Driver.EffectDriver<Reverb> {
@@ -90,3 +90,4 @@ class ReverbDriver extends hxd.snd.Driver.EffectDriver<Reverb> {
 		AL.source3i(s.inst, EFX.AUXILIARY_SEND_FILTER, EFX.EFFECTSLOT_NULL, send, EFX.FILTER_NULL);
 	}
 }
+#end
