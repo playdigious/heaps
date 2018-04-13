@@ -65,9 +65,9 @@ class LogDriver extends Driver {
 		},forceSoftware);
 	}
 
-	override function resize( width : Int, height : Int ) {
+	override function resize( width : Int, height : Int, lowRes:Int = 0 ) {
 		log('Resize $width x $height');
-		d.resize(width, height);
+		d.resize(width, height, lowRes);
 	}
 
 	override function selectShader( shader : hxsl.RuntimeShader ) {

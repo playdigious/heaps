@@ -153,7 +153,7 @@ class Driver {
 	public function init( onCreate : Bool -> Void, forceSoftware = false ) {
 	}
 
-	public function resize( width : Int, height : Int ) {
+	public function resize( width : Int, height : Int, lowRes : Int = 0 ) {
 	}
 
 	public function selectShader( shader : hxsl.RuntimeShader ) {

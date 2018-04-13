@@ -251,13 +251,13 @@ class Engine {
 	public dynamic function onResized() {
 	}
 
-	public function resize(width, height) {
+	public function resize(width, height, lowRes = 0) {
 		// minimum 32x32 size
 		if( width < 32 ) width = 32;
 		if( height < 32 ) height = 32;
 		this.width = width;
 		this.height = height;
-		if( !driver.isDisposed() ) driver.resize(width, height);
+		if( !driver.isDisposed() ) driver.resize(width, height, lowRes);
 	}
 
 	public function begin() {

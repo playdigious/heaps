@@ -141,6 +141,8 @@ class GlDriver extends Driver {
 	var shaderVersion : Null<Int>;
 	var firstShader = true;
 
+	var lowRes : Int = 0;
+
 	public function new(antiAlias=0) {
 		#if js
 		canvas = @:privateAccess hxd.Stage.getInstance().canvas;
@@ -595,7 +597,7 @@ class GlDriver extends Driver {
 		if( curTarget != null ) curTarget.flags.set(WasCleared);
 	}
 
-	override function resize(width, height) {
+	override function resize(width, height, lowRes : Int = 0) {
 		#if js
 		// prevent infinite grow if pixelRatio != 1
 		if( canvas.style.width == "" ) {
@@ -609,12 +611,13 @@ class GlDriver extends Driver {
 		#end
 		bufferWidth = width;
 		bufferHeight = height;
+		this.lowRes = lowRes;
 		gl.viewport(0, 0, width, height);
 
 		@:privateAccess if( defaultDepth != null ) {
 			disposeDepthBuffer(defaultDepth);
-			defaultDepth.width = this.bufferWidth;
-			defaultDepth.height = this.bufferHeight;
+			defaultDepth.width = this.bufferWidth >> this.lowRes;
+			defaultDepth.height = this.bufferHeight >> this.lowRes;
 			defaultDepth.b = allocDepthBuffer(defaultDepth);
 		}
 	}
@@ -776,7 +779,7 @@ class GlDriver extends Driver {
 	override function getDefaultDepthBuffer() : h3d.mat.DepthBuffer {
 		if( defaultDepth != null )
 			return defaultDepth;
-		defaultDepth = new h3d.mat.DepthBuffer(bufferWidth, bufferHeight);
+		defaultDepth = new h3d.mat.DepthBuffer(bufferWidth >> lowRes, bufferHeight >> lowRes);
 		return defaultDepth;
 	}
 
