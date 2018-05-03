@@ -934,6 +934,7 @@ class GlDriver extends Driver {
 		streamBytes.blit(streamPos, data, pos, length);
 		data = streamBytes.offset(streamPos);
 		streamPos += length;
+		while((streamPos & 3) != 0) streamPos++;
 		#end
 		return data;
 	}
