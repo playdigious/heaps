@@ -779,7 +779,12 @@ class GlDriver extends Driver {
 	override function getDefaultDepthBuffer() : h3d.mat.DepthBuffer {
 		if( defaultDepth != null )
 			return defaultDepth;
-		defaultDepth = new h3d.mat.DepthBuffer(bufferWidth >> lowRes, bufferHeight >> lowRes);
+		defaultDepth = new h3d.mat.DepthBuffer(0, 0);
+		@:privateAccess {
+			defaultDepth.width = this.bufferWidth >> lowRes;
+			defaultDepth.height = this.bufferHeight >> lowRes;
+			defaultDepth.b = allocDepthBuffer(defaultDepth);
+		}
 		return defaultDepth;
 	}
 
@@ -930,11 +935,11 @@ class GlDriver extends Driver {
 	inline function streamData(data, pos:Int, length:Int) {
 		#if hl
 		var needed = streamPos + length;
-		if( needed > streamLen ) expandStream(needed);
+		var total = (needed + 7) & ~7; // align on 8 bytes
+		if( total > streamLen ) expandStream(total);
 		streamBytes.blit(streamPos, data, pos, length);
 		data = streamBytes.offset(streamPos);
-		streamPos += length;
-		while((streamPos & 3) != 0) streamPos++;
+		streamPos = total;
 		#end
 		return data;
 	}
@@ -1247,11 +1252,9 @@ class GlDriver extends Driver {
 
 	override function hasFeature( f : Feature ) : Bool {
 		return switch( f ) {
-		#if (hlsdl || psgl)
-		case StandardDerivatives, FloatTextures:
-			false;
-		case MultipleRenderTargets, Queries:
-			false; // runtime extension detect required ?
+		#if hl
+		case StandardDerivatives, FloatTextures, MultipleRenderTargets, Queries:
+			true; // runtime extension detect required ?
 		#else
 		case StandardDerivatives:
 			gl.getExtension('OES_standard_derivatives') != null;

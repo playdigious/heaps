@@ -12,6 +12,7 @@ class MemoryManager {
 	var buffers : Array<ManagedBuffer>;
 	var indexes : Array<Indexes>;
 	var textures : Array<h3d.mat.Texture>;
+	var depths : Array<h3d.mat.DepthBuffer>;
 
 	public var triIndexes(default,null) : Indexes;
 	public var quadIndexes(default,null) : Indexes;
@@ -27,6 +28,7 @@ class MemoryManager {
 		indexes = new Array();
 		textures = new Array();
 		buffers = new Array();
+		depths = new Array();
 		initIndexes();
 	}
 
@@ -88,6 +90,9 @@ class MemoryManager {
 		if( mem == 0 ) return;
 
 		while( usedMemory + mem > MAX_MEMORY || bufferCount >= MAX_BUFFERS || (m.vbuf = driver.allocVertexes(m)) == null ) {
+
+			if( driver.isDisposed() ) return;
+
 			var size = usedMemory - freeMemorySize();
 			garbage();
 			cleanManagedBuffers();
@@ -254,7 +259,7 @@ class MemoryManager {
 
 	@:allow(h3d.mat.Texture.dispose)
 	function deleteTexture( t : h3d.mat.Texture ) {
-		textures.remove(t);
+		if( !textures.remove(t) ) return;
 		driver.disposeTexture(t);
 		texMemory -= t.width * t.height * bpp(t);
 	}
@@ -264,6 +269,7 @@ class MemoryManager {
 		var free = cleanTextures(false);
 		t.t = driver.allocTexture(t);
 		if( t.t == null ) {
+			if( driver.isDisposed() ) return;
 			if( !cleanTextures(true) ) throw "Maximum texture memory reached";
 			allocTexture(t);
 			return;
@@ -285,6 +291,27 @@ class MemoryManager {
 		texMemory += (t.width * t.height) >> 1; // Assume 4bpp compressed textures format
 	}
 
+	@:allow(h3d.mat.DepthBuffer.alloc)
+	function allocDepth( b : h3d.mat.DepthBuffer ) {
+		var free = cleanTextures(false);
+		b.b = driver.allocDepthBuffer(b);
+		if( b.b == null ) {
+			if( driver.isDisposed() ) return;
+			if( !cleanTextures(true) ) throw "Maximum texture memory reached";
+			allocDepth(b);
+			return;
+		}
+		depths.push(b);
+		texMemory += b.width * b.height * 4;
+	}
+
+	@:allow(h3d.mat.DepthBuffer.dispose)
+	function deleteDepth( b : h3d.mat.DepthBuffer ) {
+		if( !depths.remove(b) ) return;
+		driver.disposeDepthBuffer(b);
+		texMemory -= b.width * b.height * 4;
+	}
+
 	// ------------------------------------- DISPOSE ------------------------------------------
 
 	public function onContextLost() {
@@ -299,6 +326,8 @@ class MemoryManager {
 		quadIndexes = null;
 		for( t in textures.copy() )
 			t.dispose();
+		for( b in depths.copy() )
+			b.dispose();
 		for( b in buffers.copy() ) {
 			var b = b;
 			while( b != null ) {

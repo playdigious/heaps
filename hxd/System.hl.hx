@@ -85,7 +85,7 @@ class System {
 
 		// present
 		var cur = h3d.Engine.getCurrent();
-		if( cur != null ) cur.driver.present();
+		if( cur != null && cur.ready ) cur.driver.present();
 		return true;
 	}
 
@@ -128,13 +128,22 @@ class System {
 	}
 
 	static function runMainLoop() {
+		var reportError = function(e) reportError(e);
+		#if hxtelemetry
+		var hxt = new hxtelemetry.HxTelemetry();
+		#end
 		while( true ) {
 			try {
+				hl.Api.setErrorHandler(reportError); // set exception trap
 				@:privateAccess haxe.MainLoop.tick();
 				if( !mainLoop() ) break;
 			} catch( e : Dynamic ) {
+				hl.Api.setErrorHandler(null);
 				reportError(e);
 			}
+			#if hxtelemetry
+			hxt.advance_frame();
+			#end
 		}
 		Sys.exit(0);
 	}

@@ -36,7 +36,7 @@ class FontChar {
 		}
 		return 0;
 	}
-	
+
 	public function clone() {
 		var c = new FontChar(t.clone(), width);
 		c.kerning = kerning;
@@ -55,10 +55,14 @@ class Font {
 	public var charset : hxd.Charset;
 	var glyphs : Map<Int,FontChar>;
 	var defaultChar : FontChar;
+	var initSize:Int;
+	var offsetX:Int = 0;
+	var offsetY:Int = 0;
 
 	function new(name,size) {
 		this.name = name;
 		this.size = size;
+		this.initSize = size;
 		glyphs = new Map();
 		defaultChar = new FontChar(new Tile(null, 0, 0, 0, 0),0);
 		charset = hxd.Charset.getDefault();
@@ -72,7 +76,19 @@ class Font {
 		}
 		return c;
 	}
-	
+
+	public function setOffset(x,y) {
+		var dx = x - offsetX;
+		var dy = y - offsetY;
+		if( dx == 0 && dy == 0 ) return;
+		for( g in glyphs ) {
+			g.t.dx += dx;
+			g.t.dy += dy;
+		}
+		this.offsetX += dx;
+		this.offsetY += dy;
+	}
+
 	public function clone() {
 		var f = new Font(name, size);
 		f.baseLine = baseLine;
@@ -94,13 +110,13 @@ class Font {
 		This is meant to create smoother fonts by creating them with double size while still keeping the original glyph size.
 	**/
 	public function resizeTo( size : Int ) {
-		var ratio = size / this.size;
+		var ratio = size / initSize;
 		for( c in glyphs ) {
 			c.width = Std.int(c.width * ratio);
 			c.t.scaleToSize(Std.int(c.t.width * ratio), Std.int(c.t.height * ratio));
 			c.t.dx = Std.int(c.t.dx * ratio);
 			c.t.dy = Std.int(c.t.dy * ratio);
-		}		
+		}
 		lineHeight = Std.int(lineHeight * ratio);
 		baseLine = Std.int(baseLine * ratio);
 		this.size = size;
