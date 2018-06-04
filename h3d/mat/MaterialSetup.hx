@@ -26,12 +26,12 @@ class MaterialSetup {
 		this.name = name;
 	}
 
-	public function createRenderer() {
+	public function createRenderer() : h3d.scene.Renderer {
 		return new h3d.scene.DefaultRenderer();
 	}
 
 	public function createLightSystem() {
-		return new h3d.pass.LightSystem();
+		return new h3d.scene.LightSystem();
 	}
 
 	public function initModelMaterial( material : Material ) {

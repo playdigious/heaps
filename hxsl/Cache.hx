@@ -13,7 +13,7 @@ class Cache {
 
 	#if shader_debug_dump
 	public static var DEBUG_IDS = false;
-	public static var TRACE = false;
+	public static var TRACE = true;
 	#end
 
 	var linkCache : SearchMap;
@@ -190,6 +190,8 @@ class Cache {
 		var shaderId = @:privateAccess RuntimeShader.UID;
 		if( shaderId == 0 ) try sys.FileSystem.createDirectory("shaders") catch( e : Dynamic ) {};
 		var dbg = sys.io.File.write("shaders/"+shaderId+"_dump.c");
+		var oldTrace = haxe.Log.trace;
+		haxe.Log.trace = function(msg,?pos) dbg.writeString(haxe.Log.formatOutput(msg,pos)+"\n");
 		if( dbg != null ) {
 			dbg.writeString("----- DATAS ----\n\n");
 			for( s in shaderDatas ) {
@@ -201,7 +203,11 @@ class Cache {
 		#end
 
 		var linker = new hxsl.Linker();
-		var s = linker.link([for( s in shaderDatas ) s.inst.shader]);
+		var s = try linker.link([for( s in shaderDatas ) s.inst.shader]) catch( e : Error ) {
+			var shaders = [for( s in shaderDatas ) Printer.shaderToString(s.inst.shader)];
+			e.msg += "\n\nin\n\n" + shaders.join("\n-----\n");
+			throw e;
+		}
 
 		#if debug
 		Printer.check(s,[for( s in shaderDatas ) s.inst.shader]);
@@ -227,7 +233,7 @@ class Cache {
 			}
 
 		var prev = s;
-		var s = new hxsl.Splitter().split(s);
+		var s = try new hxsl.Splitter().split(s) catch( e : Error ) { e.msg += "\n\nin\n\n"+Printer.shaderToString(s); throw e; };
 
 		#if debug
 		Printer.check(s.vertex,[prev]);
@@ -284,6 +290,10 @@ class Cache {
 			r.id = r2.id; // same id but different variable mapping
 		else
 			byID.set(r.signature, r);
+
+		#if shader_debug_dump
+		haxe.Log.trace = oldTrace;
+		#end
 
 		return r;
 	}
