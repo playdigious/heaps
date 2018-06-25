@@ -256,15 +256,17 @@ class Manager {
 			var lastBuffer = null;
 			var count = driver.getProcessedBuffers(s.handle);
 			for (i in 0...count) {
-				var b = unqueueBuffer(s);
-				lastBuffer = b;
-				if (b.isEnd) {
-					c.sound           = b.sound;
-					c.duration        = b.sound.getData().duration;
-					c.position        = c.duration;
-					c.positionChanged = false;
-					c.onEnd();
-					s.start = 0;
+				if (s.buffers.length > 0){
+					var b = unqueueBuffer(s);
+					lastBuffer = b;
+					if (b.isEnd) {
+						c.sound           = b.sound;
+						c.duration        = b.sound.getData().duration;
+						c.position        = c.duration;
+						c.positionChanged = false;
+						c.onEnd();
+						s.start = 0;
+					}
 				}
 			}
 
@@ -309,7 +311,10 @@ class Manager {
 					queueBuffer(s, b.sound, b.start + b.samples);
 				} else if (c.queue.length > 0) {
 					// queue next sound buffer
-					queueBuffer(s, c.queue.shift(), 0);
+					var snd = c.queue[0];
+					if( queueBuffer(s, snd, 0) )
+						c.queue.shift();
+
 				} else if (c.loop) {
 					// requeue last played sound
 					queueBuffer(s, b.sound, 0);
@@ -532,13 +537,14 @@ class Manager {
 
 			// wait until fully decoded
 			if( s.buffers.length > 0 && BUFFER_STREAM_SPLIT > 1 && !progressiveDecodeBuffer(s, snd, start) )
-				return;
+				return false;
 
 			// queue stream buffer
 			b = getStreamBuffer(s, snd, sgroup, start);
 			driver.queueBuffer(s.handle, b.handle, 0, b.isEnd);
 		}
 		s.buffers.push(b);
+		return true;
 	}
 
 	function unqueueBuffer(s : Source) {
