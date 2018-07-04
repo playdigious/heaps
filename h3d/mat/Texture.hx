@@ -148,6 +148,10 @@ class Texture {
 		return format.match(SRGB | SRGB_ALPHA);
 	}
 
+	public function isSRGB() {
+		return format.match(SRGB | SRGB_ALPHA);
+	}
+
 	public function clone( ?allocPos : h3d.impl.AllocPos ) {
 		var old = lastFrame;
 		preventAutoDispose();

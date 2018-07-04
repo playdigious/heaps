@@ -214,6 +214,8 @@ class GlDriver extends Driver {
 		#if js
 		// make sure to enable extensions
 		makeFeatures();
+		// setup shader optim
+		hxsl.SharedShader.UNROLL_LOOPS = !hasFeature(ShaderModel3);
 		#else
 		gl.enable(GL.TEXTURE_CUBE_MAP_SEAMLESS);
 		gl.pixelStorei(GL.PACK_ALIGNMENT, 1);
@@ -518,7 +520,12 @@ class GlDriver extends Driver {
 
 	override function selectMaterial( pass : Pass ) {
 		var bits = @:privateAccess pass.bits;
-		if( rightHanded ) {
+		/*
+			When rendering to a render target, our output will be flipped in Y to match
+			output texture coordinates. We also need to flip our culling.
+			The result is inverted if we are using a right handed camera.
+		*/
+		if( (curTarget == null) == rightHanded ) {
 			switch( pass.culling ) {
 			case Back: bits = (bits & ~Pass.culling_mask) | (2 << Pass.culling_offset);
 			case Front: bits = (bits & ~Pass.culling_mask) | (1 << Pass.culling_offset);
@@ -1415,8 +1422,18 @@ class GlDriver extends Driver {
 	override function captureRenderBuffer( pixels : hxd.Pixels ) {
 		if( curTarget == null )
 			throw "Can't capture main render buffer in GL";
+		#if js
+		var buffer : js.html.ArrayBufferView = @:privateAccess pixels.bytes.b;
+		switch( curTarget.format ) {
+		case RGBA32F: buffer = new js.html.Float32Array(buffer.buffer);
+		case RGBA16F: throw "Not supported";
+		default:
+		}
+		#else
+		var buffer = @:privateAccess pixels.bytes.b;
+		#end
 		#if (js || hl)
-		gl.readPixels(0, 0, pixels.width, pixels.height, getChannels(curTarget.t), curTarget.t.pixelFmt, @:privateAccess pixels.bytes.b);
+		gl.readPixels(0, 0, pixels.width, pixels.height, getChannels(curTarget.t), curTarget.t.pixelFmt, buffer);
 		@:privateAccess pixels.innerFormat = curTarget.format;
 		#end
 	}

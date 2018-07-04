@@ -247,9 +247,9 @@ class GlslOut {
 			decl("mat3 _mat3( _mat3x4 v ) { return mat3(v.a.xyz,v.b.xyz,v.c.xyz); }");
 			return "_mat3";
 		case ScreenToUv:
-			decl("vec2 screenToUv( vec2 v ) { return v * vec2(0.5,0.5) + vec2(0.5,0.5); }");
+			decl("vec2 screenToUv( vec2 v ) { return v * vec2(0.5,-0.5) + vec2(0.5,0.5); }");
 		case UvToScreen:
-			decl("vec2 uvToScreen( vec2 v ) { return v * vec2(2.,2.) + vec2(-1., -1.); }");
+			decl("vec2 uvToScreen( vec2 v ) { return v * vec2(2.,-2.) + vec2(-1., 1.); }");
 		default:
 		}
 		return GLOBALS.get(g);
@@ -531,7 +531,20 @@ class GlslOut {
 		buf = new StringBuf();
 		exprValues = [];
 
-		decl("precision highp float;");
+		/*
+			Intel HD driver fix:
+				single element arrays are interpreted as not arrays, creating mismatch when
+				handling uniforms/textures. The fix changes decl[1] into decl[2] with one unused element
+
+				This fix is only for desktop, WebGL has errors with Cube Textures if there's
+				both Texture2D and TextureCube arrays in shader.
+				Also disable it for third party GL implementations (consoles)
+		*/
+		#if !(usegl || js)
+		intelDriverFix = true;
+		#end
+
+		decl("precision mediump float;");
 
 		if( s.funs.length != 1 ) throw "assert";
 		var f = s.funs[0];
