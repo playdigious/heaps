@@ -3,9 +3,9 @@ package h3d.pass;
 class ScreenFx<T:hxsl.Shader> {
 
 	public var shader : T;
-	var pass : h3d.mat.Pass;
+	public var pass : h3d.mat.Pass;
 	var manager : ShaderManager;
-	var plan : h3d.prim.Primitive;
+	var plane : h3d.prim.Primitive;
 	var engine : h3d.Engine;
 	var shaders : hxsl.ShaderList;
 	var buffers : h3d.shader.Buffers;
@@ -17,7 +17,7 @@ class ScreenFx<T:hxsl.Shader> {
 		pass = new h3d.mat.Pass(Std.string(this), new hxsl.ShaderList(shader));
 		pass.culling = None;
 		pass.depth(false, Always);
-		plan = h3d.prim.Plan2D.get();
+		plane = h3d.prim.Plane2D.get();
 		engine = h3d.Engine.getCurrent();
 	}
 
@@ -32,7 +32,7 @@ class ScreenFx<T:hxsl.Shader> {
 	}
 
 	public function removeShader(s:hxsl.Shader) {
-		var prev = null;
+		var prev : hxsl.ShaderList = null;
 		var cur = shaders;
 		while( cur != null ) {
 			if( cur.s == s ) {
@@ -66,7 +66,7 @@ class ScreenFx<T:hxsl.Shader> {
 		engine.uploadShaderBuffers(buffers, Globals);
 		engine.uploadShaderBuffers(buffers, Params);
 		engine.uploadShaderBuffers(buffers, Textures);
-		plan.render(engine);
+		plane.render(engine);
 	}
 
 	public function dispose() {

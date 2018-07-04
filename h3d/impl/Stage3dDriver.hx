@@ -167,8 +167,8 @@ class Stage3dDriver extends Driver {
 		return switch( f ) {
 		case HardwareAccelerated: ctx != null && ctx.driverInfo.toLowerCase().indexOf("software") == -1;
 		case StandardDerivatives, FloatTextures: isStandardMode;
-		case AllocDepthBuffer, Queries : false;
 		case MultipleRenderTargets: (PROFILE == cast "standard") || (PROFILE == cast "standardExtended");
+		default: false;
 		}
 	}
 
@@ -611,7 +611,7 @@ class Stage3dDriver extends Driver {
 			shaderChanged = true;
 			curShader = p;
 			// unbind extra textures
-			var tcount : Int = shader.fragment.textures2DCount + shader.fragment.texturesCubeCount + shader.vertex.textures2DCount + shader.vertex.texturesCubeCount;
+			var tcount : Int = shader.fragment.texturesCount + shader.vertex.texturesCount;
 			while( curTextures.length > tcount ) {
 				curTextures.pop();
 				ctx.setTextureAt(curTextures.length, null);
@@ -629,7 +629,7 @@ class Stage3dDriver extends Driver {
 	override function uploadShaderBuffers( buffers : h3d.shader.Buffers, which : h3d.shader.Buffers.BufferKind ) {
 		switch( which ) {
 		case Textures:
-			for( i in 0...curShader.s.fragment.textures2DCount + curShader.s.fragment.texturesCubeCount ) {
+			for( i in 0...curShader.s.fragment.texturesCount ) {
 				var t = buffers.fragment.tex[i];
 				if( t == null || t.isDisposed() ) {
 					var color = h3d.mat.Defaults.loadingTextureColor;
@@ -664,6 +664,9 @@ class Stage3dDriver extends Driver {
 					curSamplerBits[i] = -1;
 				}
 			}
+		case Buffers:
+			if( curShader.s.fragment.bufferCount + curShader.s.vertex.bufferCount > 0 )
+				throw "Uniform Buffers are not supported";
 		case Params:
 			if( curShader.s.vertex.paramsSize > 0 ) ctx.setProgramConstantsFromVector(flash.display3D.Context3DProgramType.VERTEX, curShader.s.vertex.globalsSize, buffers.vertex.params.toData(), curShader.s.vertex.paramsSize);
 			if( curShader.s.fragment.paramsSize > 0 ) ctx.setProgramConstantsFromVector(flash.display3D.Context3DProgramType.FRAGMENT, curShader.s.fragment.globalsSize, buffers.fragment.params.toData(), curShader.s.fragment.paramsSize);

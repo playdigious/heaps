@@ -93,7 +93,7 @@ class HlslOut {
 			add("float4x4");
 		case TMat3x4:
 			add("float4x3");
-		case TSampler2D, TSamplerCube:
+		case TSampler2D, TSamplerCube, TSampler2DArray:
 			add("SamplerState");
 		case TStruct(vl):
 			add("struct { ");
@@ -104,7 +104,7 @@ class HlslOut {
 			add(" }");
 		case TFun(_):
 			add("function");
-		case TArray(t, size):
+		case TArray(t, size), TBuffer(t,size):
 			addType(t);
 			add("[");
 			switch( size ) {
@@ -130,7 +130,7 @@ class HlslOut {
 
 	function addVar( v : TVar ) {
 		switch( v.type ) {
-		case TArray(t, size):
+		case TArray(t, size), TBuffer(t,size):
 			var old = v.type;
 			v.type = t;
 			addVar(v);
@@ -220,12 +220,12 @@ class HlslOut {
 			var acc = varAccess.get(v.id);
 			if( acc != null ) add(acc);
 			ident(v);
-		case TCall({ e : TGlobal(g = (Texture2D | TextureCube | Texture2DLod | TextureCubeLod)) }, args):
+		case TCall({ e : TGlobal(g = (Texture | TextureLod)) }, args):
 			addValue(args[0], tabs);
 			switch( g ) {
-			case Texture2D, TextureCube:
+			case Texture:
 				add(".Sample(");
-			case Texture2DLod, TextureCubeLod:
+			case TextureLod:
 				add(".SampleLevel(");
 			default:
 				throw "assert";
@@ -290,6 +290,12 @@ class HlslOut {
 				decl("float4 packNormal( float3 n ) { return float4((n + 1.) * 0.5,1.); }");
 			case UnpackNormal:
 				decl("float3 unpackNormal( float4 p ) { return normalize(p.xyz * 2. - 1.); }");
+			case Atan:
+				decl("float atan( float y, float x ) { return atan2(y,x); }");
+			case ScreenToUv:
+				decl("float2 screenToUv( float2 v ) { return v * float2(0.5, -0.5) + float2(0.5,0.5); }");
+			case UvToScreen:
+				decl("float2 uvToScreen( float2 v ) { return v * float2(2.,-2.) + float2(-1., 1.); }");
 			default:
 			}
 			add(GLOBALS.get(g));
@@ -546,12 +552,16 @@ class HlslOut {
 
 	function initParams( s : ShaderData ) {
 		var textures = [];
+		var buffers = [];
 		add("cbuffer _params : register(b1) {\n");
 		for( v in s.vars )
 			if( v.kind == Param ) {
 				switch( v.type ) {
 				case TArray(t, _) if( t.isSampler() ):
 					textures.push(v);
+					continue;
+				case TBuffer(_):
+					buffers.push(v);
 					continue;
 				default:
 				}
@@ -561,6 +571,15 @@ class HlslOut {
 			}
 		add("};\n\n");
 
+		var bufCount = 0;
+		for( b in buffers ) {
+			add('cbuffer _buffer$bufCount : register(b${bufCount+2}) { ');
+			addVar(b);
+			add("; };\n");
+			bufCount++;
+		}
+		if( bufCount > 0 ) add("\n");
+
 		for( v in textures ) {
 			switch( v.type ) {
 			case TArray(t, size):
@@ -569,6 +588,8 @@ class HlslOut {
 					add("Texture2D ");
 				case TSamplerCube:
 					add("TextureCube ");
+				case TSampler2DArray:
+					add("Texture2DArray ");
 				default:
 					throw "Unsupported sampler " + t;
 				}

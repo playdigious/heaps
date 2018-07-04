@@ -25,6 +25,29 @@ abstract PixelsARGB(Pixels) to Pixels {
 	}
 }
 
+@:forward(bytes, width, height, offset, flags, clear, dispose, toPNG, clone, toVector, sub, blit)
+abstract PixelsFloat(Pixels) to Pixels {
+
+
+	public inline function getPixelF(x, y) {
+		var pix = ((x + y * this.width) << 4) + this.offset;
+		return new h3d.Vector(this.bytes.getFloat(pix),this.bytes.getFloat(pix+4),this.bytes.getFloat(pix+8),this.bytes.getFloat(pix+12));
+	}
+
+	public inline function setPixelF(x, y, v:h3d.Vector) {
+		var pix = ((x + y * this.width) << 4) + this.offset;
+		this.bytes.setFloat(pix, v.x);
+		this.bytes.setFloat(pix + 4, v.y);
+		this.bytes.setFloat(pix + 8, v.z);
+		this.bytes.setFloat(pix + 12, v.w);
+	}
+
+	@:from public static function fromPixels(p:Pixels) : PixelsFloat {
+		p.convert(RGBA16F);
+		p.setFlip(false);
+		return cast p;
+	}
+}
 
 @:enum abstract Channel(Int) {
 	public var R = 0;
@@ -77,7 +100,7 @@ class Pixels {
 	public function sub( x : Int, y : Int, width : Int, height : Int ) {
 		if( x < 0 || y < 0 || x + width > this.width || y + height > this.height )
 			throw "Pixels.sub() outside bounds";
-		var out = hxd.impl.Tmp.getBytes(width * height * bpp);
+		var out = haxe.io.Bytes.alloc(width * height * bpp);
 		var stride = width * bpp;
 		var outP = 0;
 		for( dy in 0...height ) {
@@ -187,24 +210,23 @@ class Pixels {
 		while( tw < w ) tw <<= 1;
 		while( th < h ) th <<= 1;
 		if( w == tw && h == th ) return this;
-		var out = hxd.impl.Tmp.getBytes(tw * th * 4);
+		var out = haxe.io.Bytes.alloc(tw * th * bpp);
 		var p = 0, b = offset;
 		for( y in 0...h ) {
-			out.blit(p, bytes, b, w * 4);
-			p += w * 4;
-			b += w * 4;
-			for( i in 0...tw - w ) {
+			out.blit(p, bytes, b, w * bpp);
+			p += w * bpp;
+			b += w * bpp;
+			for( i in 0...((tw - w) * bpp) >> 2 ) {
 				out.setInt32(p, 0);
 				p += 4;
 			}
 		}
-		for( i in 0...(th - h) * tw ) {
+		for( i in 0...((th - h) * tw * bpp) >> 2 ) {
 			out.setInt32(p, 0);
 			p += 4;
 		}
 		if( copy )
 			return new Pixels(tw, th, out, format);
-		if( !flags.has(ReadOnly) ) hxd.impl.Tmp.saveBytes(bytes);
 		bytes = out;
 		width = tw;
 		height = th;
@@ -213,8 +235,8 @@ class Pixels {
 
 	function copyInner() {
 		var old = bytes;
-		bytes = hxd.impl.Tmp.getBytes(width * height * 4);
-		bytes.blit(0, old, offset, width * height * 4);
+		bytes = haxe.io.Bytes.alloc(width * height * bpp);
+		bytes.blit(0, old, offset, width * height * bpp);
 		offset = 0;
 		flags.unset(ReadOnly);
 	}
@@ -248,62 +270,54 @@ class Pixels {
 		if( format == target )
 			return;
 		willChange();
+		var bytes : hxd.impl.UncheckedBytes = bytes;
 		switch( [format, target] ) {
 		case [BGRA, ARGB], [ARGB, BGRA]:
 			// reverse bytes
-			var mem = hxd.impl.Memory.select(bytes);
 			for( i in 0...width*height ) {
 				var p = (i << 2) + offset;
-				var a = mem.b(p);
-				var r = mem.b(p+1);
-				var g = mem.b(p+2);
-				var b = mem.b(p+3);
-				mem.wb(p, b);
-				mem.wb(p+1, g);
-				mem.wb(p+2, r);
-				mem.wb(p+3, a);
+				var a = bytes[p];
+				var r = bytes[p+1];
+				var g = bytes[p+2];
+				var b = bytes[p+3];
+				bytes[p++] = b;
+				bytes[p++] = g;
+				bytes[p++] = r;
+				bytes[p] = a;
 			}
-			mem.end();
 		case [BGRA, RGBA], [RGBA,BGRA]:
-			var mem = hxd.impl.Memory.select(bytes);
 			for( i in 0...width*height ) {
 				var p = (i << 2) + offset;
-				var b = mem.b(p);
-				var r = mem.b(p+2);
-				mem.wb(p, r);
-				mem.wb(p+2, b);
+				var b = bytes[p];
+				var r = bytes[p+2];
+				bytes[p] = r;
+				bytes[p+2] = b;
 			}
-			mem.end();
 
 		case [ARGB, RGBA]:
-			var mem = hxd.impl.Memory.select(bytes);
 			for ( i in 0...width * height ) {
 				var p = (i << 2) + offset;
-				var a = (mem.b(p));
-
-				mem.wb(p, mem.b(p + 1));
-				mem.wb(p + 1, mem.b(p + 2));
-				mem.wb(p + 2, mem.b(p + 3));
-				mem.wb(p + 3, a);
+				var a = bytes[p];
+				bytes[p] = bytes[p+1];
+				bytes[p+1] = bytes[p+2];
+				bytes[p+2] = bytes[p+3];
+				bytes[p+3] = a;
 			}
-			mem.end();
 
 		case [RGBA, ARGB]:
-			var mem = hxd.impl.Memory.select(bytes);
 			for ( i in 0...width * height ) {
 				var p = (i << 2) + offset;
-				var a = (mem.b(p + 3));
-
-				mem.wb(p + 3, mem.b(p + 2));
-				mem.wb(p + 2, mem.b(p + 1));
-				mem.wb(p + 1, mem.b(p));
-				mem.wb(p, a);
+				var a = bytes[p+3];
+				bytes[p+3] = bytes[p+2];
+				bytes[p+2] = bytes[p+1];
+				bytes[p+1] = bytes[p];
+				bytes[p] = a;
 			}
-			mem.end();
 
 		default:
 			throw "Cannot convert from " + format + " to " + target;
 		}
+
 		innerFormat = target;
 	}
 
@@ -338,10 +352,7 @@ class Pixels {
 	}
 
 	public function dispose() {
-		if( bytes != null ) {
-			if( !flags.has(ReadOnly) ) hxd.impl.Tmp.saveBytes(bytes);
-			bytes = null;
-		}
+		bytes = null;
 	}
 
 	public function toPNG( ?level = 9 ) {
@@ -365,7 +376,7 @@ class Pixels {
 		p.flags.unset(ReadOnly);
 		if( bytes != null ) {
 			var size = width * height * bpp;
-			p.bytes = hxd.impl.Tmp.getBytes(size);
+			p.bytes = haxe.io.Bytes.alloc(size);
 			p.bytes.blit(0, bytes, offset, size);
 		}
 		return p;
@@ -374,7 +385,7 @@ class Pixels {
 	public static function bytesPerPixel( format : PixelFormat ) {
 		return switch( format ) {
 		case ALPHA8: 1;
-		case ARGB, BGRA, RGBA: 4;
+		case ARGB, BGRA, RGBA, SRGB, SRGB_ALPHA: 4;
 		case RGBA16F: 8;
 		case RGBA32F: 16;
 		case ALPHA16F: 2;
@@ -401,7 +412,7 @@ class Pixels {
 			[1, 2, 3, 0][channel.toInt()];
 		case BGRA:
 			[2, 1, 0, 3][channel.toInt()];
-		case RGBA:
+		case RGBA, SRGB, SRGB_ALPHA:
 			channel.toInt();
 		case RGBA16F:
 			channel.toInt() * 2;
@@ -424,7 +435,7 @@ class Pixels {
 	}
 
 	public static function alloc( width, height, format : PixelFormat ) {
-		return new Pixels(width, height, hxd.impl.Tmp.getBytes(width * height * bytesPerPixel(format)), format);
+		return new Pixels(width, height, haxe.io.Bytes.alloc(width * height * bytesPerPixel(format)), format);
 	}
 
 }

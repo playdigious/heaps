@@ -52,18 +52,18 @@ class Eval {
 		switch( v2.type ) {
 		case TStruct(vl):
 			v2.type = TStruct([for( v in vl ) mapVar(v)]);
-		case TArray(t, SVar(vs)):
+		case TArray(t, SVar(vs)), TBuffer(t, SVar(vs)):
 			var c = constants.get(vs.id);
 			if( c != null )
 				switch( c ) {
 				case TConst(CInt(v)):
-					v2.type = TArray(t, SConst(v));
+					v2.type = v2.type.match(TArray(_)) ? TArray(t, SConst(v)) : TBuffer(t, SConst(v));
 				default:
 					Error.t("Integer value expected for array size constant " + vs.name, null);
 				}
 			else {
 				var vs2 = mapVar(vs);
-				v2.type = TArray(t, SVar(vs2));
+				v2.type = v2.type.match(TArray(_)) ? TArray(t, SVar(vs2)) : TBuffer(t, SVar(vs2));
 			}
 		default:
 		}
@@ -178,7 +178,18 @@ class Eval {
 			};
 			switch( channelMode ) {
 			case R, G, B, A:
-				return TSwiz(tget, [switch( channelMode ) { case R: X; case G: Y; case B: Z; default: W; }]);
+				return TSwiz(tget, switch( [count,channelMode] ) {
+					case [1,R]: [X];
+					case [1,G]: [Y];
+					case [1,B]: [Z];
+					case [1,A]: [W];
+					case [2,R]: [X,Y];
+					case [2,G]: [Y,Z];
+					case [2,B]: [Z,W];
+					case [3,R]: [X,Y,Z];
+					case [3,G]: [Y,Z,W];
+					default: throw "Invalid channel value "+channelMode+" for "+count+" channels";
+				});
 			case Unknown:
 				var zero = { e : TConst(CFloat(0.)), t : TFloat, p : pos };
 				if( count == 1 )

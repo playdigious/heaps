@@ -61,6 +61,8 @@ class BigPrimitive extends Primitive {
 			#end
 				tmpBuf.grow(VERTICES * stride);
 		}
+		if( !isStatic )
+			tmpBuf.grow(vcount * stride + bufPos);
 		if( tmpIdx == null ) {
 			tmpIdx = PREV_INDEX;
 			if( tmpIdx == null )
@@ -167,6 +169,7 @@ class BigPrimitive extends Primitive {
 		buffers = [];
 		allIndexes = [];
 		bufPos = 0;
+		idxPos = 0;
 		tmpBuf = null;
 		tmpIdx = null;
 	}

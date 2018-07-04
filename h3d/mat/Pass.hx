@@ -86,6 +86,8 @@ class Pass implements hxd.impl.Serializable {
 			blend(SrcAlpha, OneMinusSrcAlpha);
 		case Add:
 			blend(SrcAlpha, One);
+		case AlphaAdd:
+			blend(One, OneMinusSrcAlpha);
 		case SoftAdd:
 			blend(OneMinusDstColor, One);
 		case Multiply:
@@ -129,6 +131,17 @@ class Pass implements hxd.impl.Serializable {
 		else
 			prev.next = new hxsl.ShaderList(s, cur);
 		return s;
+	}
+
+	function getShaderIndex(s:hxsl.Shader) : Int {
+		var index = 0;
+		var cur = shaders;
+		while( cur != parentShaders ) {
+			if( cur.s == s ) return index;
+			cur = cur.next;
+			index++;
+		}
+		return -1;
 	}
 
 	public function removeShader(s) {

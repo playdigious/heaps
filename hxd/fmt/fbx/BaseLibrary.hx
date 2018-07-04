@@ -170,7 +170,7 @@ class BaseLibrary {
 		for( m in this.root.getAll("Objects.Model") ) {
 			for( p in m.getAll("Properties70.P") )
 				switch( p.props[0].toString() ) {
-				case "UDP3DSMAX":
+				case "UDP3DSMAX" | "Events":
 					var userProps = p.props[4].toString().split("&cr;&lf;");
 					for( p in userProps ) {
 						var pl = p.split("=");
@@ -299,7 +299,9 @@ class BaseLibrary {
 				convertPoints(v.getFloats());
 			for( v in g.getAll("LayerElementNormal.Normals") )
 				convertPoints(v.getFloats());
-			for( v in g.getAll("LayerElementNormal.Tangents") )
+			for( v in g.getAll("LayerElementTangent.Tangents") )
+				convertPoints(v.getFloats());
+			for( v in g.getAll("LayerElementBinormal.Binormals") )
 				convertPoints(v.getFloats());
 		}
 	}
@@ -866,8 +868,8 @@ class BaseLibrary {
 				if( c.def.preRot == null ) c.def.rotate else
 				{
 					var q = new h3d.Quat(), q2 = new h3d.Quat();
-					q2.initRotate(c.def.preRot.x, c.def.preRot.y, c.def.preRot.z);
-					q.initRotate(c.def.rotate.x, c.def.rotate.y, c.def.rotate.z);
+					q2.initRotation(c.def.preRot.x, c.def.preRot.y, c.def.preRot.z);
+					q.initRotation(c.def.rotate.x, c.def.rotate.y, c.def.rotate.z);
 					q.multiply(q2,q);
 					q.toEuler().toPoint();
 				}
@@ -1035,7 +1037,7 @@ class BaseLibrary {
 
 					if( c.r == null || rp == 0 ) {
 						if( def.rotate != null ) {
-							q.initRotate(def.rotate.x, def.rotate.y, def.rotate.z);
+							q.initRotation(def.rotate.x, def.rotate.y, def.rotate.z);
 						} else
 							q.identity();
 #if pakfix
@@ -1043,10 +1045,10 @@ class BaseLibrary {
 #else
 					} else
 #end
-						q.initRotate(crx[rp-1], cry[rp-1], crz[rp-1]);
+						q.initRotation(crx[rp-1], cry[rp-1], crz[rp-1]);
 
 					if( def.preRot != null ) {
-						q2.initRotate(def.preRot.x, def.preRot.y, def.preRot.z);
+						q2.initRotation(def.preRot.x, def.preRot.y, def.preRot.z);
 						q.multiply(q2,q);
 					}
 

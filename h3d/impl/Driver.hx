@@ -83,6 +83,18 @@ enum Feature {
 		Does it supports query objects API.
 	*/
 	Queries;
+	/*
+		Supports gamma correct textures
+	*/
+	SRGBTextures;
+	/*
+		Allows advanced shader operations (webgl2, opengl3+, directx 9.0c+)
+	*/
+	ShaderModel3;
+	/*
+		Tells if the driver uses bottom-left coordinates for textures.
+	*/
+	BottomLeftCoords;
 }
 
 enum QueryKind {
@@ -96,12 +108,22 @@ enum QueryKind {
 	Samples;
 }
 
+enum RenderFlag {
+	/**
+		0 = LeftHanded (default), 1 = RightHanded. Affects the meaning of triangle culling value.
+	**/
+	CameraHandness;
+}
+
 class Driver {
 
 	public var logEnable : Bool;
 
 	public function hasFeature( f : Feature ) {
 		return false;
+	}
+
+	public function setRenderFlag( r : RenderFlag, value : Int ) {
 	}
 
 	public function isSupportedFormat( fmt : h3d.mat.Data.TextureFormat ) {
@@ -141,7 +163,7 @@ class Driver {
 	public function captureRenderBuffer( pixels : hxd.Pixels ) {
 	}
 
-	public function capturePixels( tex : h3d.mat.Texture, face : Int, mipLevel : Int ) : hxd.Pixels {
+	public function capturePixels( tex : h3d.mat.Texture, layer : Int, mipLevel : Int ) : hxd.Pixels {
 		throw "Can't capture pixels on this platform";
 		return null;
 	}
@@ -182,7 +204,7 @@ class Driver {
 	public function setRenderZone( x : Int, y : Int, width : Int, height : Int ) {
 	}
 
-	public function setRenderTarget( tex : Null<h3d.mat.Texture>, face = 0, mipLevel = 0 ) {
+	public function setRenderTarget( tex : Null<h3d.mat.Texture>, layer = 0, mipLevel = 0 ) {
 	}
 
 	public function setRenderTargets( textures : Array<h3d.mat.Texture> ) {

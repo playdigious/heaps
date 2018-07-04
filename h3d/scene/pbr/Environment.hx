@@ -30,7 +30,7 @@ class IrradBase extends h3d.shader.ScreenShader {
 			var up = abs(n.z) < 0.999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
 			var tanX = normalize(cross(up, n));
 			var tanY = normalize(cross(n, tanX));
-			return tanX * ltan.x + tanY * ltan.y + n * ltan.z;
+			return (tanX * ltan.x + tanY * ltan.y + n * ltan.z).normalize();
 		}
 
 
@@ -43,10 +43,11 @@ class IrradShader extends IrradBase {
 
 	static var SRC = {
 
-		@const var face : Int;
+		@param var faceMatrix : Mat3;
 		@param var envMap : SamplerCube;
 
 		@const var isSpecular : Bool;
+		@const var isSRGB : Bool;
 		@param var roughness : Float;
 
 		@param var cubeSize : Float;
@@ -60,7 +61,7 @@ class IrradShader extends IrradBase {
 			var up = abs(n.z) < 0.999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
 			var tanX = normalize(cross(up, n));
 			var tanY = normalize(cross(n, tanX));
-			return tanX * ltan.x + tanY * ltan.y + n * ltan.z;
+			return (tanX * ltan.x + tanY * ltan.y + n * ltan.z).normalize();
 		}
 
 		function getNormal() : Vec3 {
@@ -70,19 +71,11 @@ class IrradShader extends IrradBase {
 				// https://seblagarde.wordpress.com/2012/06/10/amd-cubemapgen-for-physically-based-rendering/
 				d += cubeScaleFactor * (d * d * d);
 			}
-			#if hldx
-			d.y *= -1;
-			#end
-			var n : Vec3;
-			switch( face ) {
-			case 0: n = vec3(1, d.y, -d.x);
-			case 1: n = vec3(-1, d.y, d.x);
-			case 2: n = vec3(d.x, 1, -d.y);
-			case 3: n = vec3(d.x, -1, d.y);
-			case 4: n = vec3(d.x, d.y, 1);
-			default: n = vec3(-d.x, d.y,-1);
-			}
-			return n.normalize();
+			return (vec3(d,1.) * faceMatrix).normalize();
+		}
+
+		function gammaCorrect( color : Vec3 ) : Vec3 {
+			return isSRGB ? color : color.pow(vec3(2.2));
 		}
 
 		function fragment() {
@@ -102,11 +95,12 @@ class IrradShader extends IrradBase {
 				}
 				var amount = n.dot(l).saturate();
 				if( amount > 0 ) {
-					color += envMap.get(l).rgb.pow(vec3(2.2)) * amount;
+					color += gammaCorrect(envMap.get(l).rgb) * amount;
 					totalWeight += amount;
 				}
 			}
-			output.color = vec4((color / totalWeight).pow(vec3(1/2.2)), 1.);
+			// store the envMap in linear space (don't revert gamma correction)
+			output.color = vec4(color / totalWeight, 1.);
 		}
 
 	}
@@ -159,29 +153,82 @@ class IrradLut extends IrradBase {
 
 }
 
-class Irradiance  {
+class IrradEquiProj extends h3d.shader.ScreenShader {
+
+	static var SRC = {
+
+		@param var texture : Sampler2D;
+		@param var faceMatrix : Mat3;
+
+		function getNormal() : Vec3 {
+			var d = input.uv * 2. - 1.;
+			return (vec3(d,1.) * faceMatrix).normalize();
+		}
+
+		function fragment() {
+			var n = getNormal();
+			var uv = vec2(atan(n.y, n.x), asin(-n.z));
+    		uv *= vec2(0.1591, 0.3183);
+    		uv += 0.5;
+			pixelColor = texture.get(uv);
+		}
+
+	};
+
+}
+
+class Environment  {
 
 	public var sampleBits : Int;
 	public var diffSize : Int;
 	public var specSize : Int;
 	public var specLevels : Int;
 
-	public var ignoredSpecLevels : Int = 5;
+	public var ignoredSpecLevels : Int = 1;
 
-	public var envMap : h3d.mat.Texture;
+	public var source : h3d.mat.Texture;
+	public var env : h3d.mat.Texture;
 	public var lut : h3d.mat.Texture;
 	public var diffuse : h3d.mat.Texture;
 	public var specular : h3d.mat.Texture;
 
 	public var power : Float = 1.;
 
-	public function new(envMap) {
-		this.envMap = envMap;
+	/*
+		Source can be cube map already prepared or a 2D equirectangular map that
+		will be turned into a cube map.
+	*/
+	public function new(src:h3d.mat.Texture) {
+		this.source = src;
+		if( src.flags.has(Loading) )
+			throw "Source is not ready";
+		if( src.flags.has(Cube) ) {
+			this.env = src;
+		} else {
+			if( src.width != src.height*2 )
+				throw "Unrecognized environment map format";
+			env = new h3d.mat.Texture(src.height, src.height, [Cube, Target]);
+			var pass = new h3d.pass.ScreenFx(new IrradEquiProj());
+			var engine = h3d.Engine.getCurrent();
+			pass.shader.texture = src;
+			for( i in 0...6 ) {
+				engine.pushTarget(env,i);
+				pass.shader.faceMatrix = getCubeMatrix(i);
+				pass.render();
+				engine.popTarget();
+			}
+		}
 		diffSize = 64;
 		specSize = 256;
 		sampleBits = 10;
 	}
 
+	public function dispose() {
+		env.dispose();
+		lut.dispose();
+		diffuse.dispose();
+		specular.dispose();
+	}
 
 	public function compute() {
 
@@ -197,43 +244,54 @@ class Irradiance  {
 		computeIrradiance();
 	}
 
+	function getCubeMatrix( face : Int ) {
+		return h3d.Matrix.L(switch( face ) {
+			case 0: [0,0,-1,0,
+					 0,-1,0,0,
+					 1,0,0,0];
+			case 1: [0,0,1,0,
+					 0,-1,0,0,
+					-1,0,0,0];
+			case 2: [1,0,0,0,
+					 0,0,1,0,
+					 0,1,0,0];
+			case 3: [1,0,0,0,
+					 0,0,-1,0,
+					 0,-1,0,0];
+			case 4: [1,0,0,0,
+					 0,-1,0,0,
+					 0,0,1,0];
+			default: [-1,0,0,0,
+					   0,-1,0,0,
+					   0,0,-1,0];
+		});
+	}
+
 	function computeIrradLut() {
 		var screen = new h3d.pass.ScreenFx(new IrradLut());
 		screen.shader.samplesBits = sampleBits;
 
 		var engine = h3d.Engine.getCurrent();
-		engine.driver.setRenderTarget(lut);
+		engine.pushTarget(lut);
 		screen.render();
-		engine.driver.setRenderTarget(null);
+		engine.popTarget();
 		screen.dispose();
-	}
-
-	function _reversebits( i : Int ) : Int {
-		var r = (i << 16) | (i >>> 16);
-		r = ((r & 0x00ff00ff) << 8) | ((r & 0xff00ff00) >>> 8);
-		r = ((r & 0x0f0f0f0f) << 4) | ((r & 0xf0f0f0f0) >>> 4);
-		r = ((r & 0x33333333) << 2) | ((r & 0xcccccccc) >>> 2);
-		r = ((r & 0x55555555) << 1) | ((r & 0xaaaaaaaa) >>> 1);
-		return r;
-	}
-
-	function hammersley( i : Int, max : Int ) : h3d.Vector {
-		var ri = _reversebits(i) * 2.3283064365386963e-10;
-		return new h3d.Vector(i / max, ri);
 	}
 
 	function computeIrradiance() {
 
 		var screen = new h3d.pass.ScreenFx(new IrradShader());
 		screen.shader.samplesBits = sampleBits;
-		screen.shader.envMap = envMap;
+		screen.shader.envMap = env;
+		screen.shader.isSRGB = env.isSRGB();
 
 		var engine = h3d.Engine.getCurrent();
 
 		for( i in 0...6 ) {
-			screen.shader.face = i;
-			engine.driver.setRenderTarget(diffuse, i);
+			screen.shader.faceMatrix = getCubeMatrix(i);
+			engine.pushTarget(diffuse, i);
 			screen.render();
+			engine.popTarget();
 		}
 
 		screen.shader.isSpecular = true;
@@ -245,17 +303,17 @@ class Irradiance  {
 		specLevels = mipLevels - ignoredSpecLevels;
 
 		for( i in 0...6 ) {
-			screen.shader.face = i;
+			screen.shader.faceMatrix = getCubeMatrix(i);
 			for( j in 0...mipLevels ) {
 				var size = specular.width >> j;
 				screen.shader.cubeSize = size;
 				screen.shader.cubeScaleFactor = size == 1 ? 0 : (size * size) / Math.pow(size - 1, 3);
 				screen.shader.roughness = j / specLevels;
-				engine.driver.setRenderTarget(specular, i, j);
+				engine.pushTarget(specular, i, j);
 				screen.render();
+				engine.popTarget();
 			}
 		}
-		engine.driver.setRenderTarget(null);
 	}
 
 }

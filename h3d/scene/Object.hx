@@ -448,6 +448,8 @@ class Object implements hxd.impl.Serializable {
 		Same as getLocalCollider, but returns an absolute collider instead of a local one.
 	**/
 	public function getGlobalCollider() : h3d.col.Collider {
+		if(ignoreCollide)
+			return null;
 		var col = getLocalCollider();
 		return col == null ? null : new h3d.col.ObjectCollider(this, col);
 	}
@@ -477,7 +479,7 @@ class Object implements hxd.impl.Serializable {
 	}
 
 	function calcAbsPos() {
-		qRot.saveToMatrix(absPos);
+		qRot.toMatrix(absPos);
 		// prepend scale
 		absPos._11 *= scaleX;
 		absPos._12 *= scaleX;
@@ -624,7 +626,7 @@ class Object implements hxd.impl.Serializable {
 		return v;
 	}
 
-	public inline function setPos( x : Float, y : Float, z : Float ) {
+	public inline function setPosition( x : Float, y : Float, z : Float ) {
 		this.x = x;
 		this.y = y;
 		this.z = z;
@@ -649,19 +651,28 @@ class Object implements hxd.impl.Serializable {
 	*/
 	public function rotate( rx : Float, ry : Float, rz : Float ) {
 		var qTmp = new h3d.Quat();
-		qTmp.initRotate(rx, ry, rz);
+		qTmp.initRotation(rx, ry, rz);
 		qRot.multiply(qTmp,qRot);
 		posChanged = true;
 	}
 
-	public function setRotate( rx : Float, ry : Float, rz : Float ) {
-		qRot.initRotate(rx, ry, rz);
+	public function setRotation( rx : Float, ry : Float, rz : Float ) {
+		qRot.initRotation(rx, ry, rz);
 		posChanged = true;
 	}
 
-	public function setRotateAxis( ax : Float, ay : Float, az : Float, angle : Float ) {
+	public function setRotationAxis( ax : Float, ay : Float, az : Float, angle : Float ) {
 		qRot.initRotateAxis(ax, ay, az, angle);
 		posChanged = true;
+	}
+
+	public function setDirection( v : h3d.Vector ) {
+		qRot.initDirection(v);
+		posChanged = true;
+	}
+
+	public function getDirection() {
+		return qRot.getDirection();
 	}
 
 	public function getRotationQuat() {

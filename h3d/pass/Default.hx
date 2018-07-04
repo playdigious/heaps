@@ -81,7 +81,7 @@ class Default extends Base {
 			}
 			p.shader = manager.compileShaders(shaders);
 			p.shaders = shaders;
-			var t = p.shader.fragment.textures2D;
+			var t = p.shader.fragment.textures;
 			if( t == null )
 				p.texture = 0;
 			else {
@@ -117,9 +117,9 @@ class Default extends Base {
 		var p = passes;
 		var shaderStart = shaderCount, textureStart = textureCount;
 		while( p != null ) {
-			if( !(shaderIdMap[p.shader.id] >= shaderStart) )
+			if( shaderIdMap[p.shader.id] < shaderStart #if js || shaderIdMap[p.shader.id] == null #end )
 				shaderIdMap[p.shader.id] = shaderCount++;
-			if( !(textureIdMap[p.texture] >= textureStart) )
+			if( textureIdMap[p.texture] < textureStart #if js || textureIdMap[p.shader.id] == null #end )
 				textureIdMap[p.texture] = textureCount++;
 			p = p.next;
 		}
@@ -158,6 +158,7 @@ class Default extends Base {
 				manager.fillParams(buf, p.shader, p.shaders);
 				ctx.engine.uploadShaderBuffers(buf, Params);
 				ctx.engine.uploadShaderBuffers(buf, Textures);
+				ctx.engine.uploadShaderBuffers(buf, Buffers);
 			}
 			drawObject(p);
 			p = p.next;

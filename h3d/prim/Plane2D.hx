@@ -1,6 +1,6 @@
 package h3d.prim;
 
-class Plan2D extends Primitive {
+class Plane2D extends Primitive {
 
 	function new() {
 	}
@@ -15,25 +15,26 @@ class Plan2D extends Primitive {
 
 	override function alloc( engine : h3d.Engine ) {
 		var v = new hxd.FloatBuffer();
+		var y = engine.driver.hasFeature(BottomLeftCoords) ? 1. : 0.;
 		v.push( -1);
 		v.push( -1);
 		v.push( 0);
-		v.push( 1);
+		v.push( 1 - y);
 
 		v.push( -1);
 		v.push( 1);
 		v.push( 0);
-		v.push( 0);
+		v.push( y);
 
 		v.push( 1);
 		v.push( -1);
 		v.push( 1);
-		v.push( 1);
+		v.push( 1 - y);
 
 		v.push( 1);
 		v.push( 1);
 		v.push( 1);
-		v.push( 0);
+		v.push( y);
 
 		buffer = h3d.Buffer.ofFloats(v, 4, [Quads, RawFormat]);
 	}
@@ -45,10 +46,10 @@ class Plan2D extends Primitive {
 
 	public static function get() {
 		var engine = h3d.Engine.getCurrent();
-		var inst = @:privateAccess engine.resCache.get(Plan2D);
+		var inst = @:privateAccess engine.resCache.get(Plane2D);
 		if( inst == null ) {
-			inst = new Plan2D();
-			@:privateAccess engine.resCache.set(Plan2D, inst);
+			inst = new Plane2D();
+			@:privateAccess engine.resCache.set(Plane2D, inst);
 		}
 		return inst;
 	}

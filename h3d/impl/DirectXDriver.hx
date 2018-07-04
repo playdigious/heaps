@@ -22,6 +22,7 @@ private class ShaderContext {
 	public var paramsSize : Int;
 	public var texturesCount : Int;
 	public var textures2DCount : Int;
+	public var bufferCount : Int;
 	public var paramsContent : hl.Bytes;
 	public var globals : dx.Resource;
 	public var params : dx.Resource;
@@ -355,6 +356,7 @@ class DirectXDriver extends h3d.impl.Driver {
 
 		var rt = t.flags.has(Target);
 		var isCube = t.flags.has(Cube);
+		var isArray = t.flags.has(IsArray);
 
 		var desc = new Texture2dDesc();
 		desc.width = t.width;
@@ -369,6 +371,8 @@ class DirectXDriver extends h3d.impl.Driver {
 			desc.arraySize = 6;
 			desc.misc |= TextureCube;
 		}
+		if( isArray )
+			desc.arraySize = t.layerCount;
 		if( t.flags.has(MipMapped) && !t.flags.has(ManualMipMapGen) ) {
 			desc.bind |= RenderTarget;
 			desc.misc |= GenerateMips;
@@ -382,7 +386,7 @@ class DirectXDriver extends h3d.impl.Driver {
 
 		var vdesc = new ShaderResourceViewDesc();
 		vdesc.format = desc.format;
-		vdesc.dimension = isCube ? TextureCube : Texture2D;
+		vdesc.dimension = isCube ? TextureCube : isArray ? Texture2DArray : Texture2D;
 		vdesc.arraySize = desc.arraySize;
 		vdesc.start = 0; // top mip level
 		vdesc.count = -1; // all mip levels
@@ -476,13 +480,13 @@ class DirectXDriver extends h3d.impl.Driver {
 		tmp.release();
 	}
 
-	override function capturePixels(tex:h3d.mat.Texture, face:Int, mipLevel:Int) : hxd.Pixels {
+	override function capturePixels(tex:h3d.mat.Texture, layer:Int, mipLevel:Int) : hxd.Pixels {
 		var pixels = hxd.Pixels.alloc(tex.width >> mipLevel, tex.height >> mipLevel, tex.format);
-		captureTexPixels(pixels, tex, face, mipLevel);
+		captureTexPixels(pixels, tex, layer, mipLevel);
 		return pixels;
 	}
 
-	function captureTexPixels( pixels: hxd.Pixels, tex:h3d.mat.Texture, face:Int, mipLevel:Int)  {
+	function captureTexPixels( pixels: hxd.Pixels, tex:h3d.mat.Texture, layer:Int, mipLevel:Int)  {
 		var desc = new Texture2dDesc();
 		desc.width = pixels.width;
 		desc.height = pixels.height;
@@ -493,15 +497,16 @@ class DirectXDriver extends h3d.impl.Driver {
 		if( tmp == null )
 			throw "Capture failed: can't create tmp texture";
 
-		tmp.copySubresourceRegion(0,0,0,0,tex.t.res,tex.t.mips * face + mipLevel, null);
+		tmp.copySubresourceRegion(0,0,0,0,tex.t.res,tex.t.mips * layer + mipLevel, null);
 
 		var pitch = 0;
+		var bpp = hxd.Pixels.bytesPerPixel(tex.format);
 		var ptr = tmp.map(0, Read, true, pitch);
-		if( pitch == desc.width * 4 )
-			@:privateAccess pixels.bytes.b.blit(0, ptr, 0, desc.width * desc.height * 4);
+		if( pitch == desc.width * bpp )
+			@:privateAccess pixels.bytes.b.blit(0, ptr, 0, desc.width * desc.height * bpp);
 		else {
 			for( i in 0...desc.height )
-				@:privateAccess pixels.bytes.b.blit(i * desc.width * 4, ptr, i * pitch, desc.width * 4);
+				@:privateAccess pixels.bytes.b.blit(i * desc.width * bpp, ptr, i * pitch, desc.width * bpp);
 		}
 		tmp.unmap(0);
 		tmp.release();
@@ -537,7 +542,7 @@ class DirectXDriver extends h3d.impl.Driver {
 		currentMaterialBits = bits;
 
 		var depthBits = bits & (Pass.depthWrite_mask | Pass.depthTest_mask);
-		if( pass.stencil != null ) throw "TODO";
+		if( pass.stencil != null ) throw "TODO: Stencil support";
 		var depth = depthStates.get(depthBits);
 		if( depth == null ) {
 			var cmp = Pass.getDepthTest(bits);
@@ -641,8 +646,8 @@ class DirectXDriver extends h3d.impl.Driver {
 		ctx.paramsSize = shader.paramsSize;
 		ctx.paramsContent = new hl.Bytes(shader.paramsSize * 16);
 		ctx.paramsContent.fill(0, shader.paramsSize * 16, 0xDD);
-		ctx.texturesCount = shader.textures2DCount + shader.texturesCubeCount;
-		ctx.textures2DCount = shader.textures2DCount;
+		ctx.texturesCount = shader.texturesCount;
+		ctx.bufferCount = shader.bufferCount;
 		ctx.globals = dx.Driver.createBuffer(shader.globalsSize * 16, Dynamic, ConstantBuffer, CpuWrite, None, 0, null);
 		ctx.params = dx.Driver.createBuffer(shader.paramsSize * 16, Dynamic, ConstantBuffer, CpuWrite, None, 0, null);
 		#if debug
@@ -660,10 +665,10 @@ class DirectXDriver extends h3d.impl.Driver {
 
 	override function hasFeature(f:Feature) {
 		return switch(f) {
-		case StandardDerivatives, FloatTextures, AllocDepthBuffer, HardwareAccelerated, MultipleRenderTargets:
-			true;
-		case Queries:
+		case Queries, BottomLeftCoords:
 			false;
+		default:
+			true;
 		};
 	}
 
@@ -678,7 +683,7 @@ class DirectXDriver extends h3d.impl.Driver {
 	}
 
 	var tmpTextures = new Array<h3d.mat.Texture>();
-	override function setRenderTarget(tex:Null<h3d.mat.Texture>, face = 0, mipLevel = 0) {
+	override function setRenderTarget(tex:Null<h3d.mat.Texture>, layer = 0, mipLevel = 0) {
 		if( tex == null ) {
 			curTexture = null;
 			currentDepth = defaultDepth;
@@ -692,7 +697,7 @@ class DirectXDriver extends h3d.impl.Driver {
 			return;
 		}
 		tmpTextures[0] = tex;
-		_setRenderTargets(tmpTextures, face, mipLevel);
+		_setRenderTargets(tmpTextures, layer, mipLevel);
 	}
 
 	function unbind( res ) {
@@ -712,7 +717,7 @@ class DirectXDriver extends h3d.impl.Driver {
 		_setRenderTargets(textures, 0, 0);
 	}
 
-	function _setRenderTargets( textures:Array<h3d.mat.Texture>, face : Int, mipLevel : Int ) {
+	function _setRenderTargets( textures:Array<h3d.mat.Texture>, layer : Int, mipLevel : Int ) {
 		if( textures.length == 0 ) {
 			setRenderTarget(null);
 			return;
@@ -732,13 +737,13 @@ class DirectXDriver extends h3d.impl.Driver {
 			}
 			if( tex.t.rt == null )
 				throw "Can't render to texture which is not allocated with Target flag";
-			var index = mipLevel * 6 + face;
+			var index = mipLevel * tex.layerCount + layer;
 			var rt = tex.t.rt[index];
 			if( rt == null ) {
-				var cube = tex.flags.has(Cube);
-				var v = new dx.Driver.RenderTargetDesc(getTextureFormat(tex), cube ? Texture2DArray : Texture2D);
+				var arr = tex.flags.has(Cube) || tex.flags.has(IsArray);
+				var v = new dx.Driver.RenderTargetDesc(getTextureFormat(tex), arr ? Texture2DArray : Texture2D);
 				v.mipMap = mipLevel;
-				v.firstSlice = face;
+				v.firstSlice = layer;
 				v.sliceCount = 1;
 				rt = Driver.createRenderTargetView(tex.t.res, v);
 				tex.t.rt[index] = rt;
@@ -935,6 +940,25 @@ class DirectXDriver extends h3d.impl.Driver {
 					}
 				}
 			}
+		case Buffers:
+			var first = -1;
+			var max = -1;
+			for( i in 0...shader.bufferCount ) {
+				var buf = @:privateAccess buffers.buffers[i].buffer.vbuf.res;
+				var tid = i + 2;
+				if( buf != state.buffers[tid] ) {
+					state.buffers[tid] = buf;
+					if( first < 0 ) first = tid;
+					max = tid;
+				}
+			}
+			if( max >= 0 )
+				switch( state.kind ) {
+				case Vertex:
+					Driver.vsSetConstantBuffers(first,max-first+1,state.buffers.getRef().offset(first));
+				case Pixel:
+					Driver.psSetConstantBuffers(first,max-first+1,state.buffers.getRef().offset(first));
+				}
 		case Textures:
 			var start = -1, max = -1;
 			var sstart = -1, smax = -1;

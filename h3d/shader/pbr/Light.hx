@@ -7,11 +7,7 @@ class Light extends hxsl.Shader {
 		var transformedPosition : Vec3;
 		var occlusion : Float;
 
-		/**
-			Tells that we need to keep occlusion / shadow map.
-		**/
 		@param var lightColor = vec3(0.5, 0.5, 0.5);
-		@const var isSun : Bool;
 
 	};
 }
@@ -41,8 +37,6 @@ class PointLight extends Light {
 			falloff *= falloff;
 			falloff *= 1 / (dist + 1);
 			pbrLightColor = lightColor * falloff;
-
-			if( !isSun ) occlusion = 1.;
 		}
 
 	};
@@ -59,7 +53,6 @@ class DirLight extends Light {
 		function fragment() {
 			pbrLightDirection = lightDir;
 			pbrLightColor = lightColor;
-			if( !isSun ) occlusion = 1.;
 		}
 
 	};

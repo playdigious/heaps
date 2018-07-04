@@ -12,10 +12,12 @@ enum Type {
 	TMat3x4;
 	TBytes( size : Int );
 	TSampler2D;
+	TSampler2DArray;
 	TSamplerCube;
 	TStruct( vl : Array<TVar> );
 	TFun( variants : Array<FunType> );
 	TArray( t : Type, size : SizeDecl );
+	TBuffer( t : Type, size : SizeDecl );
 	TChannel( size : Int );
 }
 
@@ -197,8 +199,8 @@ enum TGlobal {
 	//MatrixCompMult;
 	//Any;
 	//All;
-	Texture2D;
-	TextureCube;
+	Texture;
+	TextureLod;
 	// ...other texture* operations
 	// constructors
 	ToInt;
@@ -223,14 +225,14 @@ enum TGlobal {
 	Unpack;
 	PackNormal;
 	UnpackNormal;
+	ScreenToUv;
+	UvToScreen;
 	// extensions
 	DFdx;
 	DFdy;
 	Fwidth;
-	TextureCubeLod;
-	Texture2DLod;
+	// debug / internal
 	ChannelRead;
-	// debug
 	Trace;
 }
 
@@ -355,7 +357,7 @@ class Tools {
 
 	public static function isSampler( t : Type ) {
 		return switch( t ) {
-		case TSampler2D, TSamplerCube:
+		case TSampler2D, TSamplerCube, TSampler2DArray, TChannel(_):
 			true;
 		default:
 			false;
@@ -373,6 +375,7 @@ class Tools {
 			prefix + "Vec" + size;
 		case TStruct(vl):"{" + [for( v in vl ) v.name + " : " + toString(v.type)].join(",") + "}";
 		case TArray(t, s): toString(t) + "[" + (switch( s ) { case SConst(i): "" + i; case SVar(v): v.name; } ) + "]";
+		case TBuffer(t, s): "buffer "+toString(t) + "[" + (switch( s ) { case SConst(i): "" + i; case SVar(v): v.name; } ) + "]";
 		case TBytes(n): "Bytes" + n;
 		default: t.getName().substr(1);
 		}
@@ -490,9 +493,9 @@ class Tools {
 		case TMat4: 16;
 		case TMat3x4: 12;
 		case TBytes(s): s;
-		case TBool, TString, TSampler2D, TSamplerCube, TFun(_): 0;
-		case TArray(t, SConst(v)): size(t) * v;
-		case TArray(_, SVar(_)): 0;
+		case TBool, TString, TSampler2D, TSampler2DArray, TSamplerCube, TFun(_): 0;
+		case TArray(t, SConst(v)), TBuffer(t, SConst(v)): size(t) * v;
+		case TArray(_, SVar(_)), TBuffer(_): 0;
 		}
 	}
 
