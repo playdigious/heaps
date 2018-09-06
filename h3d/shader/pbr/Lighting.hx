@@ -11,30 +11,48 @@ class Indirect extends PropsDefinition {
 		@param var irrPower : Float;
 
 		@const var showSky : Bool;
+		@const var skyColor : Bool;
+		@param var skyColorValue : Vec3;
+
+		@const var drawIndirectDiffuse : Bool;
+		@const var drawIndirectSpecular : Bool;
 		@param var skyMap : SamplerCube;
 		@param var cameraInvViewProj : Mat4;
+		@param var emissivePower : Float;
 		var calculatedUV : Vec2;
 
 		function fragment() {
 			var isSky = normal.dot(normal) <= 0;
 			if( isSky ) {
 				if( showSky ) {
-					normal = (vec3( uvToScreen(calculatedUV) * 5. /*?*/ , 1. ) * cameraInvViewProj.mat3x4()).normalize();
-					pixelColor.rgb = skyMap.get(normal).rgb.pow(vec3(2.)) * irrPower;
+					if( skyColor ) {
+						pixelColor.rgb = skyColorValue * irrPower;
+					} else {
+						normal = (vec3( uvToScreen(calculatedUV) * 5. /*?*/ , 1. ) * cameraInvViewProj.mat3x4()).normalize();
+						pixelColor.rgb = skyMap.get(normal).rgb.pow(vec3(2.)) * irrPower;
+					}
 				} else
 					discard;
 			} else {
 
+				var diffuse = vec3(0.);
+				var specular = vec3(0.);
+
 				var F0 = pbrSpecularColor;
 				var F = F0 + (max(vec3(1 - roughness), F0) - F0) * exp2( ( -5.55473 * NdV - 6.98316) * NdV );
 
-				var diffuse = irrDiffuse.get(normal).rgb * albedo;
-				var envSpec = textureLod(irrSpecular, reflect(-view,normal), roughness * irrSpecularLevels).rgb;
-				var envBRDF = irrLut.get(vec2(roughness, NdV));
-				var specular = envSpec * (F * envBRDF.x + envBRDF.y);
+				if( drawIndirectDiffuse ){
+					diffuse = irrDiffuse.get(normal).rgb * albedo;
+				}
+				if( drawIndirectSpecular ) {
+					var envSpec = textureLod(irrSpecular, reflect(-view,normal), roughness * irrSpecularLevels).rgb;
+					var envBRDF = irrLut.get(vec2(roughness, NdV));
+					specular = envSpec * (F * envBRDF.x + envBRDF.y);
+				}
 
 				var indirect = (diffuse * (1 - metalness) * (1 - F) + specular) * irrPower;
-				pixelColor.rgb += indirect * occlusion;
+
+				pixelColor.rgb += indirect * occlusion + albedo * emissive * emissivePower;
 			}
 		}
 	};
@@ -50,6 +68,7 @@ class Direct extends PropsDefinition {
 		@const var doDiscard : Bool = true;
 
 		function fragment() {
+
 			var NdL = normal.dot(pbrLightDirection).max(0.);
 			if( pbrLightColor.dot(pbrLightColor) > 0.0001 && NdL > 0 ) {
 

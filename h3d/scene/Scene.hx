@@ -267,7 +267,7 @@ class Scene extends Object implements h3d.IDrawable implements hxd.SceneEvents.I
 			var p = hardwarePass;
 			if( p == null )
 				hardwarePass = p = new h3d.pass.HardwarePick();
-			ctx.setGlobal("depthMap", h3d.mat.Texture.fromColor(0xFF00000, 0));
+			ctx.setGlobal("depthMap", { texture : h3d.mat.Texture.fromColor(0xFF00000, 0) });
 			p.pickX = pixelX;
 			p.pickY = pixelY;
 			p.setContext(ctx);
@@ -308,6 +308,15 @@ class Scene extends Object implements h3d.IDrawable implements hxd.SceneEvents.I
 		ctx.camera = null;
 		ctx.engine = null;
 		ctx.scene = null;
+	}
+
+	public function computeStatic() {
+		var old = ctx.elapsedTime;
+		ctx.elapsedTime = 0;
+		ctx.computingStatic = true;
+		render(h3d.Engine.getCurrent());
+		ctx.computingStatic = false;
+		ctx.elapsedTime = old;
 	}
 
 	@:access(h3d.mat.Pass)
@@ -362,16 +371,17 @@ class Scene extends Object implements h3d.IDrawable implements hxd.SceneEvents.I
 
 		// check that passes have been rendered
 		#if debug
-		for( p in passes ) {
-			if( !p.rendered ) {
-				trace("Pass " + p.name+" has not been rendered : don't know how to handle.");
-				var o = p.passes;
-				while( o != null ) {
-					trace(" used by " + o.obj.name == null ? "" + o.obj : o.obj.name);
-					o = o.next;
+		if( !ctx.computingStatic )
+			for( p in passes ) {
+				if( !p.rendered ) {
+					trace("Pass " + p.name+" has not been rendered : don't know how to handle.");
+					var o = p.passes;
+					while( o != null ) {
+						trace(" used by " + o.obj.name == null ? "" + o.obj : o.obj.name);
+						o = o.next;
+					}
 				}
 			}
-		}
 		#end
 
 		if( camera.rightHanded )

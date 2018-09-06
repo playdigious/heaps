@@ -50,6 +50,7 @@ class WorldMaterial {
 	public var culling : Bool;
 	public var blend : h3d.mat.BlendMode;
 	public var killAlpha : Null<Float>;
+	public var emissive : Null<Float>;
 	public var lights : Bool;
 	public var shadows : Bool;
 	public var shaders : Array<hxsl.Shader>;
@@ -61,10 +62,11 @@ class WorldMaterial {
 		shaders = [];
 	}
 	public function updateBits() {
-		bits = (t.t == null ? 0 : t.t.id    << 9)
-			| ((normal == null ? 0 : 1)     << 8)
-			| (blend.getIndex()             << 5)
-			| ((killAlpha == null ? 0 : 1)  << 4)
+		bits = (t.t == null ? 0 : t.t.id    << 10)
+			| ((normal == null ? 0 : 1)     << 9)
+			| (blend.getIndex()             << 6)
+			| ((killAlpha == null ? 0 : 1)  << 5)
+			| ((emissive == null ? 0 : 1)   << 4)
 			| ((lights ? 1 : 0)             << 3)
 			| ((shadows ? 1 : 0)            << 2)
 			| ((spec == null ? 0 : 1)       << 1)
@@ -273,6 +275,7 @@ class World extends Object {
 		m.normal = normalMap;
 		m.blend = getBlend(rt);
 		m.killAlpha = null;
+		m.emissive = null;
 		m.mat = mat;
 		m.culling = true;
 		m.updateBits();
@@ -384,7 +387,7 @@ class World extends Object {
 				}
 
 				for( i in 0...m.indexCount )
-					model.idx.push(data.indexes[i] + startIndex);
+					model.idx.push(data.indexes[i] + startVertex);
 
 				startVertex += m.vertexCount;
 				startIndex += m.indexCount;
@@ -434,13 +437,20 @@ class World extends Object {
 		soil.material.shadows = true;
 	}
 
+	function precompute( e : WorldElement ) {
+
+	}
+
 	function initChunkElements( c : WorldChunk ) {
 		for( e in c.elements ) {
 			var model = e.model;
+			precompute(e);
 			for( g in model.geometries ) {
 				var b = c.buffers.get(g.m.bits);
 				if( b == null ) {
-					b = new h3d.scene.Mesh(new h3d.prim.BigPrimitive(getStride(model), true), c.root);
+					var bp = new h3d.prim.BigPrimitive(getStride(model), true);
+					bp.hasTangents = enableNormalMaps;
+					b = new h3d.scene.Mesh(bp, c.root);
 					b.name = g.m.name;
 					c.buffers.set(g.m.bits, b);
 					initMaterial(b, g.m);
@@ -486,8 +496,9 @@ class World extends Object {
 		mesh.material.mainPass.depthWrite = true;
 		mesh.material.mainPass.depthTest = Less;
 
-		for(s in mat.shaders)
+		for(s in mat.shaders){
 			mesh.material.mainPass.addShader(s);
+		}
 
 		if( mat.spec != null ) {
 			if( specularInAlpha ) {
@@ -500,6 +511,7 @@ class World extends Object {
 
 		if(enableNormalMaps)
 			mesh.material.normalMap = mat.normal.t.tex;
+
 	}
 
 	override function dispose() {

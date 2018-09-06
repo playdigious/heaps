@@ -92,10 +92,14 @@ class DirectXDriver extends h3d.impl.Driver {
 	var currentVBuffers = new hl.NativeArray<dx.Resource>(16);
 	var frame : Int;
 	var currentMaterialBits = -1;
+	var currentStencilMaskBits = -1;
+	var currentStencilOpBits = -1;
+	var currentStencilRef = 0;
+	var currentColorMask = -1;
 	var targetsCount = 1;
 	var allowDraw = false;
 
-	var depthStates : Map<Int,DepthStencilState>;
+	var depthStates : Map<Int,{ def : DepthStencilState, stencils : Array<{ op : Int, mask : Int, state : DepthStencilState }> }>;
 	var blendStates : Map<Int,BlendState>;
 	var rasterStates : Map<Int,RasterState>;
 	var samplerStates : Map<Int,SamplerState>;
@@ -131,6 +135,8 @@ class DirectXDriver extends h3d.impl.Driver {
 		allowDraw = false;
 		targetsCount = 1;
 		currentMaterialBits = -1;
+		currentStencilMaskBits = -1;
+		currentStencilOpBits = -1;
 		if( shaders != null ) {
 			for( s in shaders ) {
 				s.fragment.shader.release();
@@ -138,7 +144,7 @@ class DirectXDriver extends h3d.impl.Driver {
 				s.layout.release();
 			}
 		}
-		if( depthStates != null ) for( s in depthStates ) if( s != null ) s.release();
+		if( depthStates != null ) for( s in depthStates ) { if( s.def != null ) s.def.release(); for( s in s.stencils ) if( s.state != null ) s.state.release(); }
 		if( blendStates != null ) for( s in blendStates ) if( s != null ) s.release();
 		if( rasterStates != null ) for( s in rasterStates ) if( s != null ) s.release();
 		if( samplerStates != null ) for( s in samplerStates ) if( s != null ) s.release();
@@ -303,13 +309,14 @@ class DirectXDriver extends h3d.impl.Driver {
 		return { res : res, count : m.size, stride : m.stride };
 	}
 
-	override function allocIndexes( count : Int ) : IndexBuffer {
-		var res = dx.Driver.createBuffer(count << 1, Default, IndexBuffer, None, None, 0, null);
+	override function allocIndexes( count : Int, is32 : Bool ) : IndexBuffer {
+		var bits = is32 ? 2 : 1;
+		var res = dx.Driver.createBuffer(count << bits, Default, IndexBuffer, None, None, 0, null);
 		if( res == null ) return null;
-		return { res : res, count : count };
+		return { res : res, count : count, bits : bits  };
 	}
 
-	override function allocDepthBuffer(b:h3d.mat.DepthBuffer):DepthBuffer {
+	override function allocDepthBuffer( b : h3d.mat.DepthBuffer ) : DepthBuffer {
 		var depthDesc = new Texture2dDesc();
 		depthDesc.width = b.width;
 		depthDesc.height = b.height;
@@ -335,14 +342,28 @@ class DirectXDriver extends h3d.impl.Driver {
 		captureTexPixels(pixels, rt, 0, 0);
 	}
 
+	override function isSupportedFormat( fmt : hxd.PixelFormat ) {
+		return switch( fmt ) {
+		case RGB8, RGB16F, ARGB, BGRA, SRGB: false;
+		default: true;
+		}
+	}
+
 	function getTextureFormat( t : h3d.mat.Texture ) : dx.Format {
 		return switch( t.format ) {
 		case RGBA: R8G8B8A8_UNORM;
 		case RGBA16F: R16G16B16A16_FLOAT;
 		case RGBA32F: R32G32B32A32_FLOAT;
-		case ALPHA32F: R32_FLOAT;
-		case ALPHA16F: R16_FLOAT;
-		case ALPHA8: R8_UNORM;
+		case R32F: R32_FLOAT;
+		case R16F: R16_FLOAT;
+		case R8: R8_UNORM;
+		case RG8: R8G8_UNORM;
+		case RG16F: R16G16_FLOAT;
+		case RG32F: R32G32_FLOAT;
+		case RGB32F: R32G32B32_FLOAT;
+		case RGB10A2: R10G10B10A2_UNORM;
+		case RG11B10UF: R11G11B10_FLOAT;
+		case SRGB_ALPHA: R8G8B8A8_UNORM_SRGB;
 		default: throw "Unsupported texture format " + t.format;
 		}
 	}
@@ -432,12 +453,12 @@ class DirectXDriver extends h3d.impl.Driver {
 
 	override function uploadIndexBuffer(i:IndexBuffer, startIndice:Int, indiceCount:Int, buf:hxd.IndexBuffer, bufPos:Int) {
 		if( hasDeviceError ) return;
-		updateBuffer(i.res, hl.Bytes.getArray(buf.getNative()).offset(bufPos << 1), startIndice << 1, indiceCount << 1);
+		updateBuffer(i.res, hl.Bytes.getArray(buf.getNative()).offset(bufPos << i.bits), startIndice << i.bits, indiceCount << i.bits);
 	}
 
 	override function uploadIndexBytes(i:IndexBuffer, startIndice:Int, indiceCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
 		if( hasDeviceError ) return;
-		updateBuffer(i.res, @:privateAccess buf.b.offset(bufPos << 1), startIndice << 1, indiceCount << 1);
+		updateBuffer(i.res, @:privateAccess buf.b.offset(bufPos << i.bits), startIndice << i.bits, indiceCount << i.bits);
 	}
 
 	override function uploadVertexBuffer(v:VertexBuffer, startVertex:Int, vertexCount:Int, buf:hxd.FloatBuffer, bufPos:Int) {
@@ -451,16 +472,16 @@ class DirectXDriver extends h3d.impl.Driver {
 	}
 
 	override function readIndexBytes(v:IndexBuffer, startIndice:Int, indiceCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
-		var tmp = dx.Driver.createBuffer(indiceCount << 1, Staging, None, CpuRead | CpuWrite, None, 0, null);
-		box.left = startIndice << 1;
+		var tmp = dx.Driver.createBuffer(indiceCount << v.bits, Staging, None, CpuRead | CpuWrite, None, 0, null);
+		box.left = startIndice << v.bits;
 		box.top = 0;
 		box.front = 0;
-		box.right = (startIndice + indiceCount) << 1;
+		box.right = (startIndice + indiceCount) << v.bits;
 		box.bottom = 1;
 		box.back = 1;
 		tmp.copySubresourceRegion(0, 0, 0, 0, v.res, 0, box);
 		var ptr = tmp.map(0, Read, true, null);
-		@:privateAccess buf.b.blit(bufPos, ptr, 0, indiceCount << 1);
+		@:privateAccess buf.b.blit(bufPos, ptr, 0, indiceCount << v.bits);
 		tmp.unmap(0);
 		tmp.release();
 	}
@@ -500,7 +521,7 @@ class DirectXDriver extends h3d.impl.Driver {
 		tmp.copySubresourceRegion(0,0,0,0,tex.t.res,tex.t.mips * layer + mipLevel, null);
 
 		var pitch = 0;
-		var bpp = hxd.Pixels.bytesPerPixel(tex.format);
+		var bpp = hxd.Pixels.getBytesPerPixel(tex.format);
 		var ptr = tmp.map(0, Read, true, pitch);
 		if( pitch == desc.width * bpp )
 			@:privateAccess pixels.bytes.b.blit(0, ptr, 0, desc.width * desc.height * bpp);
@@ -521,41 +542,87 @@ class DirectXDriver extends h3d.impl.Driver {
 	}
 
 	override function uploadTexturePixels(t:h3d.mat.Texture, pixels:hxd.Pixels, mipLevel:Int, side:Int) {
-		pixels.convert(RGBA);
+		pixels.convert(t.format);
 		pixels.setFlip(false);
 		if( hasDeviceError ) return;
 		if( mipLevel >= t.t.mips ) throw "Mip level outside texture range : " + mipLevel + " (max = " + (t.t.mips - 1) + ")";
-		t.t.res.updateSubresource(mipLevel + side * t.t.mips, null, (pixels.bytes:hl.Bytes).offset(pixels.offset), pixels.width * hxd.Pixels.bytesPerPixel(pixels.format), 0);
+		t.t.res.updateSubresource(mipLevel + side * t.t.mips, null, (pixels.bytes:hl.Bytes).offset(pixels.offset), pixels.width * pixels.bytesPerPixel, 0);
 		updateResCount++;
 	}
 
-	static inline var SCISSOR_BIT = 1 << (Pass.colorMask_offset + 4);
+	static inline var SCISSOR_BIT = 1 << (Pass.blendAlphaOp_offset + 4);
 
 	override public function selectMaterial(pass:h3d.mat.Pass) {
 		var bits = @:privateAccess pass.bits;
+		var mask = pass.colorMask;
 
 		if( hasScissor ) bits |= SCISSOR_BIT;
 
-		if( bits == currentMaterialBits )
+		var stOpBits = pass.stencil != null ? @:privateAccess pass.stencil.opBits : -1;
+		var stMaskBits = pass.stencil != null ? @:privateAccess pass.stencil.maskBits : -1;
+
+		if( bits == currentMaterialBits && stOpBits == currentStencilOpBits && stMaskBits == currentStencilMaskBits && mask == currentColorMask )
 			return;
 
 		currentMaterialBits = bits;
+		currentStencilOpBits = stOpBits;
+		currentStencilMaskBits = stMaskBits;
+		currentColorMask = mask;
 
 		var depthBits = bits & (Pass.depthWrite_mask | Pass.depthTest_mask);
-		if( pass.stencil != null ) throw "TODO: Stencil support";
-		var depth = depthStates.get(depthBits);
+		var depths = depthStates.get(depthBits);
+		var depth = null;
+		var st = pass.stencil;
+		if( depths != null ) {
+			if( st == null )
+				depth = depths.def;
+			else {
+				for( s in depths.stencils )
+					@:privateAccess if( s.op == st.opBits && s.mask == (st.maskBits & ~h3d.mat.Stencil.reference_mask) ) {
+						depth = s.state;
+						break;
+					}
+			}
+		}
 		if( depth == null ) {
 			var cmp = Pass.getDepthTest(bits);
 			var desc = new DepthStencilDesc();
 			desc.depthEnable = cmp != 0;
 			desc.depthFunc = COMPARE[cmp];
 			desc.depthWrite = Pass.getDepthWrite(bits) != 0;
+			if( st != null ) {
+				desc.stencilEnable = true;
+				desc.stencilReadMask = st.readMask;
+				desc.stencilWriteMask = st.writeMask;
+				desc.frontFaceFunc = COMPARE[st.frontTest.getIndex()];
+				desc.frontFacePass = STENCIL_OP[st.frontPass.getIndex()];
+				desc.frontFaceFail = STENCIL_OP[st.frontSTfail.getIndex()];
+				desc.frontFaceDepthFail = STENCIL_OP[st.frontDPfail.getIndex()];
+				desc.backFaceFunc = COMPARE[st.backTest.getIndex()];
+				desc.backFacePass = STENCIL_OP[st.backPass.getIndex()];
+				desc.backFaceFail = STENCIL_OP[st.backSTfail.getIndex()];
+				desc.backFaceDepthFail = STENCIL_OP[st.backDPfail.getIndex()];
+			}
 			depth = Driver.createDepthStencilState(desc);
-			depthStates.set(depthBits, depth);
+			if( depths == null ) {
+				depths = { def : null, stencils : [] };
+				depthStates.set(depthBits, depths);
+			}
+			if( pass.stencil == null )
+				depths.def = depth;
+			else
+				depths.stencils.push(@:privateAccess { op : st.opBits, mask : st.maskBits & ~h3d.mat.Stencil.reference_mask, state : depth });
 		}
-		if( depth != currentDepthState ) {
+		if( depth != currentDepthState || (st != null && st.reference != currentStencilRef) ) {
+			var ref = st == null ? 0 : st.reference;
 			currentDepthState = depth;
+			currentStencilRef = ref;
+			#if (hldx < "1.7")
+			if( ref != 0 ) throw "DirectX Stencil support requires HL 1.7+";
 			Driver.omSetDepthStencilState(depth);
+			#else
+			Driver.omSetDepthStencilState(depth, ref);
+			#end
 		}
 
 		var rasterBits = bits & (Pass.culling_mask | SCISSOR_BIT);
@@ -577,7 +644,7 @@ class DirectXDriver extends h3d.impl.Driver {
 			Driver.rsSetState(raster);
 		}
 
-		var blendBits = bits & (Pass.blendSrc_mask | Pass.blendDst_mask | Pass.blendAlphaSrc_mask | Pass.blendAlphaDst_mask | Pass.blendOp_mask | Pass.blendAlphaOp_mask | Pass.colorMask_mask);
+		var blendBits = (bits & (Pass.blendSrc_mask | Pass.blendDst_mask | Pass.blendAlphaSrc_mask | Pass.blendAlphaDst_mask | Pass.blendOp_mask | Pass.blendAlphaOp_mask)) | mask;
 		var blend = blendStates.get(blendBits);
 		if( blend == null ) {
 			var desc = new RenderTargetBlendDesc();
@@ -587,7 +654,7 @@ class DirectXDriver extends h3d.impl.Driver {
 			desc.destBlendAlpha = BLEND_ALPHA[Pass.getBlendAlphaDst(bits)];
 			desc.blendOp = BLEND_OP[Pass.getBlendOp(bits)];
 			desc.blendOpAlpha = BLEND_OP[Pass.getBlendAlphaOp(bits)];
-			desc.renderTargetWriteMask = Pass.getColorMask(bits);
+			desc.renderTargetWriteMask = mask;
 			desc.blendEnable = !(desc.srcBlend == One && desc.srcBlendAlpha == One && desc.destBlend == Zero && desc.destBlendAlpha == Zero && desc.blendOp == Add && desc.blendOpAlpha == Add);
 			var tmp = new hl.NativeArray(1);
 			tmp[0] = desc;
@@ -806,6 +873,13 @@ class DirectXDriver extends h3d.impl.Driver {
 				if( v.kind == Input ) {
 					var e = new LayoutElement();
 					var name = hxsl.HlslOut.semanticName(v.name);
+					var perInst = 0;
+					if( v.qualifiers != null )
+						for( q in v.qualifiers )
+							switch( q ) {
+							case PerInstance(k): perInst = k;
+							default:
+							}
 					e.semanticName = @:privateAccess name.toUtf8();
 					e.inputSlot = layout.length;
 					e.format = switch( v.type ) {
@@ -817,7 +891,11 @@ class DirectXDriver extends h3d.impl.Driver {
 					default:
 						throw "Unsupported input type " + hxsl.Ast.Tools.toString(v.type);
 					};
-					e.inputSlotClass = PerVertexData;
+					if( perInst > 0 ) {
+						e.inputSlotClass = PerInstanceData;
+						e.instanceDataStepRate = perInst;
+					} else
+						e.inputSlotClass = PerVertexData;
 					layout.push(e);
 					s.offsets.push(offset);
 					s.inputs.push(v.name);
@@ -1022,9 +1100,32 @@ class DirectXDriver extends h3d.impl.Driver {
 			return;
 		if( currentIndex != ibuf ) {
 			currentIndex = ibuf;
-			dx.Driver.iaSetIndexBuffer(ibuf.res,false,0);
+			dx.Driver.iaSetIndexBuffer(ibuf.res,ibuf.bits == 2,0);
 		}
 		dx.Driver.drawIndexed(ntriangles * 3, startIndex, 0);
+	}
+
+	override function allocInstanceBuffer(b:InstanceBuffer, buf : haxe.io.Bytes) {
+		b.data = dx.Driver.createBuffer(b.commandCount * 5 * 4, Default, UnorderedAccess, None, DrawIndirectArgs, 4, buf);
+	}
+
+	override function disposeInstanceBuffer(b:InstanceBuffer) {
+		(b.data : dx.Resource).release();
+		b.data = null;
+	}
+
+	override function drawInstanced(ibuf:IndexBuffer, commands:InstanceBuffer) {
+		if( !allowDraw )
+			return;
+		if( currentIndex != ibuf ) {
+			currentIndex = ibuf;
+			dx.Driver.iaSetIndexBuffer(ibuf.res,ibuf.bits == 2,0);
+		}
+		#if (hldx >= "1.7")
+		dx.Driver.drawIndexedInstancedIndirect(commands.data, 0);
+		#else
+		throw "drawInstanced requires HL 1.7+";
+		#end
 	}
 
 	static var COMPARE : Array<ComparisonFunc> = [
@@ -1043,6 +1144,17 @@ class DirectXDriver extends h3d.impl.Driver {
 		Back,
 		Front,
 		None,
+	];
+
+	static var STENCIL_OP : Array<StencilOp> = [
+		Keep,
+		Zero,
+		Replace,
+		IncrSat,
+		Incr,
+		DecrSat,
+		#if (hldx < "1.7.0") Desc #else Decr #end,
+		Invert,
 	];
 
 	static var BLEND : Array<Blend> = [
@@ -1088,7 +1200,8 @@ class DirectXDriver extends h3d.impl.Driver {
 		Add,
 		Subtract,
 		RevSubstract,
-		// Min / Max : not supported by Heaps for now
+		Min,
+		Max
 	];
 
 	static var FILTER : Array<Array<Filter>> = [

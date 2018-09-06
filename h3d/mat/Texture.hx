@@ -152,8 +152,13 @@ class Texture {
 	public function clone( ?allocPos : h3d.impl.AllocPos ) {
 		var old = lastFrame;
 		preventAutoDispose();
-		var t = new Texture(width, height, null, format, allocPos);
-		h3d.pass.Copy.run(this, t);
+		var flags = [];
+		for( f in [Target,Cube,MipMapped,IsArray] )
+			if( this.flags.has(f) )
+				flags.push(f);
+		var t = new Texture(width, height, flags, format, allocPos);
+		if(this.flags.has(Cube)) h3d.pass.CubeCopy.run(this, t);
+		else h3d.pass.Copy.run(this, t);
 		lastFrame = old;
 		return t;
 	}
@@ -320,7 +325,8 @@ class Texture {
 		if( t != null ) {
 			mem.deleteTexture(this);
 			#if debug
-			this.allocPos.customParams = ["#DISPOSED"];
+			if(this.allocPos != null)
+				this.allocPos.customParams = ["#DISPOSED"];
 			#end
 		}
 	}
@@ -382,7 +388,7 @@ class Texture {
 		e.driver.captureRenderBuffer(alpha);
 		var alphaPos = hxd.Pixels.getChannelOffset(alpha.format, A);
 		var redPos = hxd.Pixels.getChannelOffset(alpha.format, R);
-		var bpp = hxd.Pixels.bytesPerPixel(alpha.format);
+		var bpp = alpha.bytesPerPixel;
 		for( y in 0...height ) {
 			var p = y * width * bpp;
 			for( x in 0...width ) {

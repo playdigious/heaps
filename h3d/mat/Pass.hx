@@ -20,6 +20,12 @@ class Pass implements hxd.impl.Serializable {
 	**/
 	@:s public var dynamicParameters : Bool;
 
+	/**
+		Mark the pass as static, this will allow some renderers or shadows to filter it
+		when rendering static/dynamic parts.
+	**/
+	@:s public var isStatic : Bool;
+
 	@:bits(bits) public var culling : Face;
 	@:bits(bits) public var depthWrite : Bool;
 	@:bits(bits) public var depthTest : Compare;
@@ -29,7 +35,7 @@ class Pass implements hxd.impl.Serializable {
 	@:bits(bits) public var blendAlphaDst : Blend;
 	@:bits(bits) public var blendOp : Operation;
 	@:bits(bits) public var blendAlphaOp : Operation;
-	@:bits(bits, 4) public var colorMask : Int;
+	public var colorMask : Int;
 
 	@:s public var stencil : Stencil;
 
@@ -82,20 +88,36 @@ class Pass implements hxd.impl.Serializable {
 		switch( b ) {
 		case None:
 			blend(One, Zero);
+			blendOp = Add;
 		case Alpha:
 			blend(SrcAlpha, OneMinusSrcAlpha);
+			blendOp = Add;
 		case Add:
 			blend(SrcAlpha, One);
+			blendOp = Add;
 		case AlphaAdd:
 			blend(One, OneMinusSrcAlpha);
+			blendOp = Add;
 		case SoftAdd:
 			blend(OneMinusDstColor, One);
+			blendOp = Add;
 		case Multiply:
 			blend(DstColor, Zero);
 		case Erase:
 			blend(Zero, OneMinusSrcColor);
+			blendOp = Add;
 		case Screen:
 			blend(One, OneMinusSrcColor);
+			blendOp = Add;
+		case Sub:
+			blend(SrcAlpha, One);
+			blendOp = ReverseSub;
+		case Max:
+			this.blendSrc = SrcColor;
+			this.blendAlphaSrc = SrcAlpha;
+			this.blendDst = DstColor;
+			this.blendAlphaDst = DstAlpha;
+			blendOp = Max;
 		}
 	}
 
@@ -106,6 +128,16 @@ class Pass implements hxd.impl.Serializable {
 
 	public function setColorMask(r, g, b, a) {
 		this.colorMask = (r?1:0) | (g?2:0) | (b?4:0) | (a?8:0);
+	}
+
+	public function setColorChannel( c : hxsl.Channel) {
+		switch( c ) {
+		case R: setColorMask(true, false, false, false);
+		case G: setColorMask(false, true, false, false);
+		case B: setColorMask(false, false, true, false);
+		case A: setColorMask(false, false, false, true);
+		default: throw "Unsupported channel "+c;
+		}
 	}
 
 	public function addShader<T:hxsl.Shader>(s:T) : T {
