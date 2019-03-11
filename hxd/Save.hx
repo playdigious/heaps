@@ -55,13 +55,13 @@ class Save {
 			return defValue;
 		}
 		#elseif sys
-		#if mobile
+		/*#if mobile
 		if(hxd.System.platform == hxd.System.Platform.TV_OS)
 		{
 			var str = cur.get(name);
 			return str == null ? defValue : loadData(str, checkSum);
 		}
-		#end
+		#end*/
 		return try loadData(sys.io.File.getContent(savePath(name)),checkSum) catch( e : Dynamic ) defValue;
 		#else
 		return defValue;
@@ -90,7 +90,6 @@ class Save {
 		#elseif sys
 		var data = saveData(val,checkSum);
 		#if mobile
-		hxd.CloudSave.sendSave(name, data);
 		if(hxd.System.platform == hxd.System.Platform.TV_OS)
 		{
 			cur.set(name, data);
@@ -110,12 +109,5 @@ class Save {
 		return false;
 		#end
 	}
-
-#if mobile
-	public static function loadedFromCloud<T>( data : String, checkSum = false ) : T
-	{
-		return loadData(data, checkSum);
-	}
-#end
 
 }
