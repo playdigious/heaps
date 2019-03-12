@@ -201,10 +201,6 @@ class Stage {
 		case MouseWheel:
 			eh = new Event(EWheel, mouseX, mouseY);
 			eh.wheelDelta = -e.wheelDelta;
-		case CloudSaveLoaded:
-			eh = new Event(ECloudSaveLoaded);
-			eh.saveData = e.saveData;
-			eh.saveName = e.saveName;
 		#if hlsdl
 		case GControllerAdded, GControllerRemoved, GControllerUp, GControllerDown, GControllerAxis:
 			@:privateAccess hxd.Pad.onEvent( e );

@@ -169,7 +169,6 @@ class Interactive extends Drawable implements hxd.SceneEvents.Interactive {
 			onCheck(e);
 		case ETextInput:
 			onTextInput(e);
-		case ECloudSaveLoaded:
 		case EWillEnterBackground:
 		case EDidEnterBackground:
 		case EWillEnterForeground:
