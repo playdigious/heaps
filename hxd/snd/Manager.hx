@@ -546,6 +546,7 @@ class Manager {
 
 	function unqueueBuffer(s : Source) {
 		var b = s.buffers.shift();
+		if (b == null) return new Buffer(driver);
 		driver.unqueueBuffer(s.handle, b.handle);
 		if (b.isStream) freeStreamBuffers.unshift(b);
 		else if (--b.refs == 0) b.lastStop = haxe.Timer.stamp();
