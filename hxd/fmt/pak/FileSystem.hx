@@ -2,7 +2,10 @@ package hxd.fmt.pak;
 import hxd.fs.FileEntry;
 #if air3
 import hxd.impl.Air3File;
-#elseif sys
+#elseif android
+import android.assets.File;
+import android.assets.FileInput;
+#elseif (sys && !android)
 import sys.io.File;
 import sys.io.FileInput;
 #else
