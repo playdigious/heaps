@@ -42,6 +42,8 @@ class Stage {
 		#elseif hldx
 		window = new dx.Window(title, width, height);
 		#end
+		windowWidth = window.width;
+		windowHeight = window.height;
 	}
 
 	public dynamic function onClose() : Bool {
