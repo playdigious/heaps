@@ -22,7 +22,11 @@ class System {
 	public static var lang(get, never) : String;
 	public static var platform(get, never) : Platform;
 	public static var screenDPI(get,never) : Float;
-	public static var setCursor = setNativeCursor;
+	/**
+		Sets current cursor and can be replaced by custom function to manually operate displayed cursor.
+		When called, it should call `hxd.System.setNativeCursor` and pass desired `hxd.Cursor` to it.
+	**/
+	public static var setCursor : Cursor -> Void = setNativeCursor;
 
 	/**
 		Can be used to temporarly disable infinite loop check
@@ -48,6 +52,11 @@ class System {
 	public static function start( callb : Void -> Void ) : Void {
 	}
 
+	/**
+		Sets currently shown cursor.
+		This method is designated to be used by custom `hxd.System.setCursor`.
+		Calling it outside of automated Interactive cursor update system leads to undefined behavior, and not advised.
+	**/
 	public static function setNativeCursor( c : Cursor ) : Void {
 	}
 

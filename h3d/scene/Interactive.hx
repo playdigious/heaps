@@ -71,6 +71,8 @@ class Interactive extends Object implements hxd.SceneEvents.Interactive {
 		if( propagateEvents ) e.propagate = true;
 		if( cancelEvents ) e.cancel = true;
 		switch( e.kind ) {
+		case EMultiGesture:
+			onMultiGesture(e);
 		case EMove:
 			onMove(e);
 		case EPush:
@@ -115,6 +117,7 @@ class Interactive extends Object implements hxd.SceneEvents.Interactive {
 			onCheck(e);
 		case ETextInput:
 			onTextInput(e);
+		default:
 		}
 	}
 
@@ -143,19 +146,50 @@ class Interactive extends Object implements hxd.SceneEvents.Interactive {
 		return scene != null && scene.events != null && @:privateAccess scene.events.currentFocus == this;
 	}
 
+	/**
+		Sent when mouse enters Interactive hitbox area.
+		`event.propagate` and `event.cancel` are ignored during `onOver`.
+		Propagation can be set with `onMove` event, as well as cancelling `onMove` will prevent `onOver`.
+	**/
 	public dynamic function onOver( e : hxd.Event ) {
 	}
 
+	/** Sent when mouse exits Interactive hitbox area.
+		`event.propagate` and `event.cancel` are ignored during `onOut`.
+	**/
 	public dynamic function onOut( e : hxd.Event ) {
 	}
 
+	/** Sent when Interactive is pressed by user. **/
 	public dynamic function onPush( e : hxd.Event ) {
 	}
 
+	/**
+		Sent on multiple conditions.
+		A. Always sent if user releases mouse while it is inside Interactive hitbox area.
+			This happends regardless if that Interactive was pressed prior or not.
+		B. Sent before `onReleaseOutside` if this Interactive was pressed, but released outside it's bounds.
+		For first case `event.kind` will be `ERelease`, for second case - `EReleaseOutside`.
+		See `onClick` and `onReleaseOutside` functions for separate events that trigger only when user interacts with this particular Interactive.
+	**/
 	public dynamic function onRelease( e : hxd.Event ) {
 	}
 
+	/**
+		Sent when user presses Interactive, moves mouse outside and releases it.
+		This event fired only on Interactive that user pressed, but released mouse after moving it outside of Interactive hitbox area.
+	**/
+	public dynamic function onReleaseOutside( e : hxd.Event ) {
+	}
+
+	/**
+		Sent when Interactive is clicked by user.
+		This event fired only on Interactive that user pressed and released when mouse is inside Interactive hitbox area.
+	**/
 	public dynamic function onClick( e : hxd.Event ) {
+	}
+
+	public dynamic function onMultiGesture ( e : hxd.Event ){
 	}
 
 	public dynamic function onMove( e : hxd.Event ) {

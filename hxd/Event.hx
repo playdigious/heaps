@@ -4,6 +4,7 @@ enum EventKind {
 	EPush;
 	ERelease;
 	EMove;
+	EMultiGesture;
 	EOver;
 	EOut;
 	EWheel;
@@ -17,6 +18,11 @@ enum EventKind {
 		Used to check if we are still on the interactive if no EMove was triggered this frame.
 	**/
 	ECheck;
+	EWillEnterBackground;
+	EDidEnterBackground;
+	EWillEnterForeground;
+	EDidEnterForeground;
+	ELowMemoryWarning;
 }
 
 class Event {
@@ -38,6 +44,11 @@ class Event {
 	public var keyCode : Int;
 	public var charCode : Int;
 	public var wheelDelta : Float;
+	public var fingerCount : Int;
+	public var dx : Float;
+	public var dy : Float;
+	public var dTheta : Float;
+	public var dDist : Float;
 
 	public function new(k,x=0.,y=0.) {
 		kind = k;
@@ -48,10 +59,11 @@ class Event {
 	public function toString() {
 		return kind + "[" + Std.int(relX) + "," + Std.int(relY) + "]" + switch( kind ) {
 		case EPush, ERelease, EReleaseOutside: ",button=" + button;
-		case EMove, EOver, EOut, EFocus, EFocusLost, ECheck: "";
+		case EMove, EMultiGesture, EOver, EOut, EFocus, EFocusLost, ECheck: "";
 		case EWheel: ",wheelDelta=" + wheelDelta;
 		case EKeyDown, EKeyUp: ",keyCode=" + keyCode;
 		case ETextInput: ",charCode=" + charCode;
+		default:"";
 		}
 	}
 

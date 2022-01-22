@@ -27,7 +27,7 @@ class System {
 	public static var width(get,never) : Int;
 	public static var height(get, never) : Int;
 	public static var lang(get, never) : String;
-	public static var platform(get, never) : Platform;
+	public static var platform(get, null) : Platform;
 	public static var screenDPI(get,never) : Float;
 	public static var setCursor = setNativeCursor;
 	public static var allowTimeout(get, set) : Bool;
@@ -87,6 +87,7 @@ class System {
 		var height = 600;
 		var size = haxe.macro.Compiler.getDefine("windowSize");
 		var title = haxe.macro.Compiler.getDefine("windowTitle");
+		var fixed = haxe.macro.Compiler.getDefine("windowFixed") == "1";
 		if( title == null )
 			title = "";
 		if( size != null ) {
@@ -98,10 +99,10 @@ class System {
 		#if hlsdl
 			sdl.Sdl.init();
 			@:privateAccess Window.initChars();
-			@:privateAccess Window.inst = new Window(title, width, height);
+			@:privateAccess Window.inst = new Window(title, get_width(), get_height(), fixed);
 			init();
 		#elseif hldx
-			@:privateAccess Window.inst = new Window(title, width, height);
+			@:privateAccess Window.inst = new Window(title, width, height, fixed);
 			init();
 		#else
 			@:privateAccess Window.inst = new Window(title, width, height);
@@ -140,7 +141,11 @@ class System {
 		#if usesys
 		haxe.System.reportError(err + stack);
 		#else
-		Sys.println(err + stack);
+		Sys.stderr().writeString(err + stack + "\n");
+
+		if ( Sys.systemName() != 'Windows' )
+			return;
+
 		if( dismissErrors )
 			return;
 
@@ -249,11 +254,27 @@ class System {
 		return 60.;
 	}
 
+	/**
+	 * If wantedFPS is equal or less than 0, the FPS lock is removed, else it will lock the FPS at wantedFPS
+	 * @param wantedFPS 
+	 */
+	public static function lockFPS(?wantedFPS:Int)
+	{
+		#if (hlsdl && hlmobile)
+		sdl.Sdl.lockFps(wantedFPS < 0 ? 0 : wantedFPS);
+		#end
+	}
+
 	public static function getValue( s : SystemValue ) : Bool {
 		return switch( s ) {
 		#if !usesys
 		case IsWindowed:
-			return true;
+			platform == PC;
+		case IsMobile:
+			platform == IOS || platform == Android;
+		case IsTouch:
+			// TODO: check PC touch screens?
+			platform == IOS || platform == Android;
 		#end
 		default:
 			return false;
@@ -293,7 +314,7 @@ class System {
 	#elseif hlsdl
 	static function get_width() : Int return sdl.Sdl.getScreenWidth();
 	static function get_height() : Int return sdl.Sdl.getScreenHeight();
-	static function get_platform() : Platform return PC; // TODO : Xbox ?
+	static function get_platform() : Platform return IOS; // TODO : Xbox ?
 	#else
 	static function get_width() : Int return 800;
 	static function get_height() : Int return 600;
@@ -331,7 +352,7 @@ class System {
 		haxe.MainLoop.add(timeoutTick, -1) #if (haxe_ver >= 4) .isBlocking = false #end;
 		#end
 		#if (hlsdl || hldx)
-		haxe.MainLoop.add(updateCursor, -1);
+		haxe.MainLoop.add(updateCursor, -1) #if (haxe_ver >= 4) .isBlocking = false #end;
 		#end
 	}
 

@@ -5,6 +5,19 @@ import hxd.Key in K;
 #error "You shouldn't use both -lib hlsdl and -lib hldx"
 #end
 
+#if hlsdl
+typedef DisplayMode = sdl.Window.DisplayMode;
+#elseif hldx
+typedef DisplayMode = dx.Window.DisplayMode;
+#else
+enum DisplayMode {
+	Windowed;
+	Borderless;
+	Fullscreen;
+	FullscreenResize;
+}
+#end
+
 //@:coreApi
 class Window {
 
@@ -19,12 +32,13 @@ class Window {
 	public var vsync(get, set) : Bool;
 	public var isFocused(get, never) : Bool;
 
+	public var title(get, set) : String;
+	public var displayMode(get, set) : DisplayMode;
+
 	#if hlsdl
 	var window : sdl.Window;
-	var fullScreenMode : sdl.Window.DisplayMode = Borderless;
 	#elseif hldx
 	var window : dx.Window;
-	var fullScreenMode : dx.Window.DisplayMode = Borderless;
 	#end
 	var windowWidth = 800;
 	var windowHeight = 600;
@@ -32,16 +46,23 @@ class Window {
 	var curMouseY = 0;
 
 	static var CODEMAP = [for( i in 0...2048 ) i];
+	#if hlsdl
+	static inline var TOUCH_SCALE = 10000;
+	#end
 
-	function new(title:String, width:Int, height:Int) {
+	function new(title:String, width:Int, height:Int, fixed:Bool = false) {
 		this.windowWidth = width;
 		this.windowHeight = height;
 		eventTargets = new List();
 		resizeEvents = new List();
 		#if hlsdl
-		window = new sdl.Window(title, width, height);
+		final sdlFlags = if (!fixed) sdl.Window.SDL_WINDOW_SHOWN | sdl.Window.SDL_WINDOW_RESIZABLE else sdl.Window.SDL_WINDOW_SHOWN;
+		window = new sdl.Window(title, width, height, sdl.Window.SDL_WINDOWPOS_CENTERED, sdl.Window.SDL_WINDOWPOS_CENTERED, sdlFlags);
+		this.windowWidth = window.width;
+		this.windowHeight = window.height;
 		#elseif hldx
-		window = new dx.Window(title, width, height);
+		final dxFlags = if (!fixed) dx.Window.RESIZABLE else 0;
+		window = new dx.Window(title, width, height, dx.Window.CW_USEDEFAULT, dx.Window.CW_USEDEFAULT, dxFlags);
 		#end
 	}
 
@@ -87,11 +108,15 @@ class Window {
 		#if (hldx || hlsdl)
 		window.resize(width, height);
 		#end
+		windowWidth = width;
+		windowHeight = height;
+		for( f in resizeEvents ) f();
 	}
 
+	@:deprecated("Use the displayMode property instead")
 	public function setFullScreen( v : Bool ) : Void {
 		#if (hldx || hlsdl)
-		window.displayMode = v ? fullScreenMode : Windowed;
+		window.displayMode = v ? Borderless : Windowed;
 		#end
 	}
 
@@ -164,9 +189,29 @@ class Window {
 						event(ev);
 					}
 				#end
+			case Enter:
+				#if hldx
+				// Restore cursor
+				var cur = @:privateAccess hxd.System.currentNativeCursor;
+				@:privateAccess hxd.System.currentNativeCursor = null;
+				hxd.System.setNativeCursor(cur);
+				#end
+				event(new Event(EOver));
+			case Leave:
+				event(new Event(EOut));
 			default:
 			}
-		case MouseDown:
+		case LowMemory:
+			eh = new Event(ELowMemoryWarning);
+		case WillEnterBackground:
+			eh = new Event(EWillEnterBackground);
+		case DidEnterBackground:
+			eh = new Event(EDidEnterBackground);
+		case WillEnterForeground:
+			eh = new Event(EWillEnterForeground);
+		case DidEnterForeground:
+			eh = new Event(EDidEnterForeground);
+		case MouseDown if (!hxd.System.getValue(IsTouch)):
 			curMouseX = e.mouseX;
 			curMouseY = e.mouseY;
 			eh = new Event(EPush, e.mouseX, e.mouseY);
@@ -177,7 +222,7 @@ class Window {
 			case 2: 1;
 			case x: x;
 			}
-		case MouseUp:
+		case MouseUp if (!hxd.System.getValue(IsTouch)):
 			curMouseX = e.mouseX;
 			curMouseY = e.mouseY;
 			eh = new Event(ERelease, e.mouseX, e.mouseY);
@@ -187,7 +232,7 @@ class Window {
 			case 2: 1;
 			case x: x;
 			};
-		case MouseMove:
+		case MouseMove if (!hxd.System.getValue(IsTouch)):
 			curMouseX = e.mouseX;
 			curMouseY = e.mouseY;
 			eh = new Event(EMove, e.mouseX, e.mouseY);
@@ -224,6 +269,34 @@ class Window {
 				((c & 0x1F) << 12) | (((e.keyCode >> 8) & 0x7F) << 6) | ((e.keyCode >> 16) & 0x7F);
 			else
 				((c & 0x0F) << 18) | (((e.keyCode >> 8) & 0x7F) << 12) | (((e.keyCode >> 16) & 0x7F) << 6) | ((e.keyCode >> 24) & 0x7F);
+		case TouchDown if (hxd.System.getValue(IsTouch)):
+			curMouseX = cast(e.mouseX * get_width() / TOUCH_SCALE, Int);
+			curMouseY = cast(e.mouseY * get_height() / TOUCH_SCALE, Int);
+			eh = new Event(EPush, curMouseX, curMouseY);
+			eh.touchId = e.fingerId;
+			eh.button = 0;
+		case TouchMove if (hxd.System.getValue(IsTouch)):
+			curMouseX = cast(e.mouseX * get_width() / TOUCH_SCALE, Int);
+			curMouseY = cast(e.mouseY * get_height() / TOUCH_SCALE, Int);
+			eh = new Event(EMove, curMouseX, curMouseY);
+			eh.touchId = e.fingerId;
+			eh.dx = e.dx / TOUCH_SCALE;
+			eh.dy = e.dy / TOUCH_SCALE;
+			eh.button = 0;
+		case TouchUp if (hxd.System.getValue(IsTouch)):
+			curMouseX = cast(e.mouseX * get_width() / TOUCH_SCALE, Int);
+			curMouseY = cast(e.mouseY * get_height() / TOUCH_SCALE, Int);
+			eh = new Event(ERelease, curMouseX, curMouseY);
+			eh.touchId = e.fingerId;
+			eh.button = 0;
+		case TouchMultiGesture if (hxd.System.getValue(IsTouch)):
+			curMouseX = cast(e.mouseX * get_width() / TOUCH_SCALE, Int);
+			curMouseY = cast(e.mouseY * get_height() / TOUCH_SCALE, Int);
+			eh = new Event(EMultiGesture,curMouseX,curMouseY);
+			eh.fingerCount = e.fingerCount;
+			eh.button = 0;
+			eh.dDist = e.dDist / TOUCH_SCALE;
+			eh.dTheta = e.dTheta;
 		#elseif hldx
 		case KeyDown:
 			eh = new Event(EKeyDown);
@@ -262,6 +335,8 @@ class Window {
 			addKey(97 + i, K.A + i);
 		for( i in 0...12 )
 			addKey(1058 + i, K.F1 + i);
+		for( i in 0...12 )
+			addKey(1104 + i, K.F13 + i);
 
 		// NUMPAD
 		addKey(1084, K.NUMPAD_DIV);
@@ -285,6 +360,8 @@ class Window {
 			1228 => K.RCTRL,
 			1226 => K.LALT,
 			1230 => K.RALT,
+			1227 => K.LEFT_WINDOW_KEY,
+			1231 => K.RIGHT_WINDOW_KEY,
 			// K.ESCAPE
 			// K.SPACE
 			1075 => K.PGUP,
@@ -306,6 +383,27 @@ class Window {
 			1086 => K.NUMPAD_SUB,
 			1099 => K.NUMPAD_DOT,
 			1084 => K.NUMPAD_DIV,
+
+			39 => K.QWERTY_QUOTE,
+			44 => K.QWERTY_COMMA,
+			45 => K.QWERTY_MINUS,
+			46 => K.QWERTY_PERIOD,
+			47 => K.QWERTY_SLASH,
+			59 => K.QWERTY_SEMICOLON,
+			61 => K.QWERTY_EQUALS,
+			91 => K.QWERTY_BRACKET_LEFT,
+			92 => K.QWERTY_BACKSLASH,
+			93 => K.QWERTY_BRACKET_RIGHT,
+			96 => K.QWERTY_TILDE,
+			167 => K.QWERTY_BACKSLASH,
+			1101 => K.CONTEXT_MENU,
+			1057 => K.CAPS_LOCK,
+			1071 => K.SCROLL_LOCK,
+			1072 => K.PAUSE_BREAK,
+			1083 => K.NUM_LOCK,
+			// Because hlsdl uses sym code, instead of scancode - INTL_BACKSLASH always reports 0x5C, e.g. regular slash.
+			//none => K.INTL_BACKSLASH
+			//1070 => K.PRINT_SCREEN
 		];
 		for( sdl in keys.keys() )
 			addKey(sdl, keys.get(sdl));
@@ -332,6 +430,33 @@ class Window {
 	function get_isFocused() : Bool return false;
 
 	#end
+
+	function get_displayMode() : DisplayMode {
+		#if (hldx || hlsdl)
+		return window.displayMode;
+		#end
+		return Windowed;
+	}
+
+	function set_displayMode( m : DisplayMode ) : DisplayMode {
+		#if (hldx || hlsdl)
+		window.displayMode = m;
+		#end
+		return displayMode;
+	}
+
+	function get_title() : String {
+		#if (hldx || hlsdl)
+		return window.title;
+		#end
+		return "";
+	}
+	function set_title( t : String ) : String {
+		#if (hldx || hlsdl)
+		return window.title = t;
+		#end
+		return "";
+	}
 
 	static var inst : Window = null;
 	public static function getInstance() : Window {
