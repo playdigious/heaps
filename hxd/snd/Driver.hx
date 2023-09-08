@@ -30,6 +30,7 @@ interface Driver {
 	public function destroySource        (source : SourceHandle) : Void; 
 
 	public function createBuffer         () : BufferHandle;
+	public function cleanSource		     (source : SourceHandle) : Void;
 	public function setBufferData        (buffer : BufferHandle, data : haxe.io.Bytes, size : Int, format : Data.SampleFormat, channelCount : Int, samplingRate : Int) : Void;
 	public function destroyBuffer        (buffer : BufferHandle) : Void;
 

@@ -544,11 +544,11 @@ class Manager {
 		return true;
 	}
 
-	function unqueueBuffer(s : Source) {
+	function unqueueBuffer(s : Source, onlyFromSource = false) {
 		var b = s.buffers.shift();
 		if (b == null) return new Buffer(driver);
-		driver.unqueueBuffer(s.handle, b.handle);
-		if (b.isStream) freeStreamBuffers.unshift(b);
+		if (onlyFromSource == false) driver.unqueueBuffer(s.handle, b.handle);
+		if (b.isStream) freeStreamBuffers.push(b);
 		else if (--b.refs == 0) b.lastStop = haxe.Timer.stamp();
 		return b;
 	}
@@ -593,7 +593,10 @@ class Manager {
 			s.volume = -1.0;
 		}
 
-		while(s.buffers.length > 0) unqueueBuffer(s);
+		// clear buffers from source only
+		while(s.buffers.length > 0) unqueueBuffer(s, true);
+		// let driver clean source
+		driver.cleanSource(s.handle);
 	}
 
 	var targetRate     : Int;

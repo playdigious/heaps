@@ -75,6 +75,11 @@ class Driver implements hxd.snd.Driver {
 		return source;
 	}
 
+	public function cleanSource(source : SourceHandle) : Void {
+		AL.sourcei(source.inst, AL.BUFFER, AL.NONE); // release buffers
+		AL.sourceRewind(source.inst); // reset source
+	}
+
 	public function destroySource(source : SourceHandle) : Void {
 		AL.sourcei(source.inst, EFX.DIRECT_FILTER, EFX.FILTER_NULL);
 
